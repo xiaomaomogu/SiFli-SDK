@@ -5,6 +5,7 @@ set SIFLI_SDK=%~dp0
 set PYTHONPATH= %PYTHONPATH%;%SIFLI_SDK%tools\build;%SIFLI_SDK%tools\build\default;
 set SIFLI_SDK=%SIFLI_SDK:\=/%
 set PATH=%SIFLI_SDK%tools\menuconfig\dist;%PATH%;%SIFLI_SDK%tools\scripts;
+set LEGACY_ENV=1
 
 REM Use keil by default
 set RTT_CC=keil

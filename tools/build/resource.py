@@ -1076,11 +1076,12 @@ def BuildJLinkLoadScript(main_env):
 
     uart_comment = '@echo off\ntitle=uart download\nset WORK_PATH=%~dp0\nset CURR_PATH=%cd%\ncd %WORK_PATH%\n:start\necho,\necho      \
 Uart Download\necho,\nset /p input=please input the serial port num:\ngoto download\n:download\necho com%input%\n'
-#     uart_comment += MakeLine('{} --func 0 --port com%input% --baund 3000000 --loadram 1 --postact 1 --device {} \
-# --file ImgBurnList.ini --log ImgBurn.log\nif %errorlevel%==0 (\n    echo Download Successful\n)else (\n    echo Download Failed\n    \
-# echo logfile:%WORK_PATH%ImgBurn.log\n)\ncd %CURR_PATH%\n'.format(ImgDownUart_PATH, main_env['JLINK_DEVICE']))
-    # print("123123123")
-    uart_comment += MakeLine(f"sftool -p COM%input% -c {device} write_flash {download_list}\n")
+    if os.getenv("LEGACY_ENV"):
+        uart_comment += MakeLine('{} --func 0 --port com%input% --baund 3000000 --loadram 1 --postact 1 --device {} \
+    --file ImgBurnList.ini --log ImgBurn.log\nif %errorlevel%==0 (\n    echo Download Successful\n)else (\n    echo Download Failed\n    \
+    echo logfile:%WORK_PATH%ImgBurn.log\n)\ncd %CURR_PATH%\n'.format(ImgDownUart_PATH, main_env['JLINK_DEVICE']))
+    else:
+        uart_comment += MakeLine(f"sftool -p COM%input% -c {device} write_flash {download_list}\n")
     uart_comment += MakeLine('if "%ENV_ROOT%"=="" pause\n')
     uart_f = open(os.path.join(main_env['build_dir'], 'uart_download.bat'), 'w')
     uart_f.write(uart_comment)
