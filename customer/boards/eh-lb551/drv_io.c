@@ -588,9 +588,9 @@ static void BSP_OTHER_PowerDown(void)
     OUTPUT_0(45); // MOTOR PWM
 
     //OUTPUT_0(49); // UART1 TX
-    INPUT_Z(49);
+//    INPUT_Z(49);
     //HAL_PIN_Set(PAD_PA51, USART1_RXD, PIN_PULLDOWN, 1);        // UART1 RX
-    INPUT_Z(51);
+//    INPUT_Z(51);
 #ifdef PMIC_CTRL_ENABLE
     INPUT_Z(58);
 #endif
@@ -630,8 +630,8 @@ static void BSP_OTHER_PowerDown(void)
 
     //OUTPUT_0(45);   // if connected with uart2usb chip, can't output 0
     //HAL_PIN_Set(PAD_PB46, USART3_RXD, PIN_PULLDOWN, 0);        //UART3 RX
-    INPUT_Z(45);    // UART3 TX
-    INPUT_Z(46);
+//    INPUT_Z(45);    // UART3 TX
+//    INPUT_Z(46);
 
 
     //HAL_PIN_Set(PAD_PB48, GPIO_B48, PIN_NOPULL, 0);            //FPC_KEY, wakeup key, set by sensor_service.c
@@ -641,7 +641,6 @@ static void BSP_OTHER_PowerDown(void)
 
 void BSP_IO_Power_Down(int coreid, bool is_deep_sleep)
 {
-    int i;
 #ifdef SOC_BF0_HCPU
     if (coreid == CORE_ID_HCPU)
     {

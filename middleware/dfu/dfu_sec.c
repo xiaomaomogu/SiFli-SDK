@@ -736,4 +736,14 @@ uint32_t dfu_crc32mpeg2(uint8_t *data, uint32_t len)
     return crc;
 }
 
+// calculate CRC32 MPEG2 using part data
+uint32_t crc32_update(uint32_t crc, const uint8_t *data, size_t len)
+{
+    for (size_t i = 0; i < len; i++)
+    {
+        crc = (crc << 8) ^ CrcTable[((crc >> 24) ^ data[i]) & 0xFF];
+    }
+    return crc;
+}
+
 /************************ (C) COPYRIGHT Sifli Technology *******END OF FILE****/

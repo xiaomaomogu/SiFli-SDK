@@ -99,6 +99,7 @@ enum AEC_MODE_TAG
 typedef struct audio_3a_tag
 {
     uint8_t      state;
+    uint8_t      is_bt_voice;
     volatile uint8_t is_far_putted;
     volatile uint8_t is_aecm_mic_putted;
     uint16_t     frame_len; //byte
@@ -168,6 +169,29 @@ extern uint16_t g_aecm_real_shift;
 extern uint16_t g_aecm_imag_shift;
 extern int16_t g_agc_decay;
 extern uint32_t g_agc_min;
+
+void audio_3a_set_bypass(uint8_t is_bypass, uint8_t mic, uint8_t down)
+{
+    g_bypass = is_bypass;
+    if (g_bypass)
+    {
+        g_uplink_agc = 0;
+        g_u16_test_aec = 0;
+        g_ans1_disabled = true;
+    }
+    else
+    {
+        g_uplink_agc = 1;
+        g_u16_test_aec = 1;
+        g_ans1_disabled = false;
+    }
+
+    //if (is_bypass && mic < 3)
+    //{
+    //    g_mic_choose = mic;
+    //}
+    //g_down_choose = down;
+}
 
 void audio_ramp_init(audio_3a_t *p_3a_env)
 {
@@ -715,6 +739,7 @@ void audio_3a_data_process(audio_3a_t *p_3a_env, uint8_t *fifo, uint16_t fifo_si
 
         data_in2 = data_out; //outframe
 #ifdef WEBRTC_AECM
+        if (g_u16_test_aec)
         {
             aec_input_para_t input_para;
             data_out = outframe2;
@@ -745,6 +770,10 @@ void audio_3a_data_process(audio_3a_t *p_3a_env, uint8_t *fifo, uint16_t fifo_si
 #endif
             audio_tick_out(AUDIO_AEC_TIME);
             audio_dump_data(ADUMP_AECM_OUT, (uint8_t *)data_out, p_3a_env->frame_len);
+        }
+        else
+        {
+            memcpy(data_out, data_in, p_3a_env->frame_len);
         }
 #endif
 
@@ -852,7 +881,7 @@ void audio_3a_module_free(audio_3a_t *p_3a_env)
 }
 
 extern uint32_t bt_connect_get_peer_type(void);
-void audio_3a_open(uint32_t samplerate)
+void audio_3a_open(uint32_t samplerate, uint8_t is_bt_voice)
 {
     audio_3a_t *thiz = &g_audio_3a_env;
 #if defined(SOLUTION_WATCH) && defined(RT_USING_BT)
@@ -883,6 +912,7 @@ void audio_3a_open(uint32_t samplerate)
           g_ul_agc_compression_gain_db, g_dl_agc_compression_gain_db, g_agc_decay, g_echoMode);
     if (g_audio_3a_env.state == 0)
     {
+        g_audio_3a_env.is_bt_voice = is_bt_voice;
         g_3a_fifo = audio_mem_malloc(240);
         RT_ASSERT(g_3a_fifo);
         LOG_I("3a_w open samplearate=%ld", samplerate);
@@ -902,7 +932,8 @@ void audio_3a_open(uint32_t samplerate)
         g_audio_3a_env.is_far_putted = 0;
         g_audio_3a_env.is_aecm_mic_putted = 0;
 #ifdef AUDIO_BT_AUDIO
-        bt_voice_open(samplerate);
+        if (is_bt_voice)
+            bt_voice_open(samplerate);
 #endif
     }
 }
@@ -915,7 +946,8 @@ void audio_3a_close()
         audio_3a_module_free(&g_audio_3a_env);
         g_audio_3a_env.state = 0;
 #ifdef AUDIO_BT_AUDIO
-        bt_voice_close();
+        if (g_audio_3a_env.is_bt_voice)
+            bt_voice_close();
 #endif
         audio_mem_free(g_3a_fifo);
         g_3a_fifo = NULL;
@@ -1043,17 +1075,22 @@ void audio_3a_downlink(uint8_t *fifo, uint8_t size)
 #endif
 }
 
-void audio_3a_uplink(uint8_t *fifo, uint16_t fifo_size, uint8_t is_mute, uint8_t is_pdm)
+void audio_3a_uplink(uint8_t *fifo, uint16_t fifo_size, uint8_t is_mute, uint8_t is_bt_voice)
 {
     audio_3a_t *p_3a_env = &g_audio_3a_env;
     uint16_t putsize, getsize;
-    UNUSED(is_pdm);
+
     RT_ASSERT(fifo_size == 320);
 #if (defined(WEBRTC_ANS_FIX) || (defined(WEBRTC_AECM)) || (defined(WEBRTC_AGC_FIX)))
     if (p_3a_env->frame_len == 160) // 8K
     {
         audio_3a_data_process(p_3a_env, fifo, 160);
         audio_3a_data_process(p_3a_env, fifo + 160, 160);
+        if (!is_bt_voice)
+        {
+            rt_ringbuffer_get(p_3a_env->rbuf_out, fifo, 320);
+            return;
+        }
         while (rt_ringbuffer_data_len(p_3a_env->rbuf_out) >= 120)
         {
             rt_ringbuffer_get(p_3a_env->rbuf_out, g_3a_fifo, 120);
@@ -1069,6 +1106,11 @@ void audio_3a_uplink(uint8_t *fifo, uint16_t fifo_size, uint8_t is_mute, uint8_t
     else
     {
         audio_3a_data_process(p_3a_env, fifo, fifo_size);
+        if (!is_bt_voice)
+        {
+            rt_ringbuffer_get(p_3a_env->rbuf_out, fifo, 320);
+            return;
+        }
         audio_tick_in(AUDIO_MSBC_ENCODE_TIME);
         while (rt_ringbuffer_data_len(p_3a_env->rbuf_out) >= 240)
         {

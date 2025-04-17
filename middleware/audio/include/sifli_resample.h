@@ -20,5 +20,7 @@ uint32_t sifli_resample_process(sifli_resample_t *p, int16_t *src, uint32_t src_
 sifli_resample_t *sifli_resample_open(uint8_t channels, uint32_t src_samplerate, uint32_t dst_samplerate);
 int16_t *sifli_resample_get_output(sifli_resample_t *p);
 void sifli_resample_close(sifli_resample_t *p);
+void *resample_malloc(uint32_t size);
+void resample_free(void *p);
 
 #endif

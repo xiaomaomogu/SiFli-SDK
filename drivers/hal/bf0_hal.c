@@ -205,6 +205,10 @@ HAL_StatusTypeDef HAL_Init(void)
     }
 #endif /* SOC_BF0_HCPU */
 
+#ifdef HAL_ADC_MODULE_ENABLED
+    HAL_ADC_HwInit(PM_STANDBY_BOOT != SystemPowerOnModeGet());
+#endif /* HAL_ADC_MODULE_ENABLED */
+
     /* Set Interrupt Group Priority */
     HAL_NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 

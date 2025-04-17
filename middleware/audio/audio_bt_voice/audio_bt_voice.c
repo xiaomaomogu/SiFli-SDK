@@ -930,10 +930,10 @@ uint8_t msbc_decode_process(uint8_t *fifo, uint8_t *output, uint8_t size)
         LOG_D("msbc_proc:packet_sta:%d\n", p_sco_data->packet_status);
         if ((p_msbc_env->total_packet & 0xFF) == 0)
         {
-            LOG_W("3a_w cvsd total packet:%d, rx err:%d\n", p_msbc_env->total_packet, p_msbc_env->error_packet);
+            LOG_W("3a_w cvsd totalRxcnt:%d, rx errcnt:%d\n", p_msbc_env->total_packet, p_msbc_env->error_packet);
 
             uint32_t *p_sco_sta = (uint32_t *)(HCPU_LCPU_SHARE_MEM_BASE_ADDR + 0x40);
-            LOG_W("3a_w cvsd lcpu buf err:0x%x, buf full_empty:0x%x, rx cnt:0x%x\n", *p_sco_sta, *(p_sco_sta + 1), *(p_sco_sta + 2));
+            LOG_W("3a_w cvsd lcpu buf errcnt:0x%x, buf full_empty:0x%x, rx cnt:0x%x\n", *p_sco_sta, *(p_sco_sta + 1), *(p_sco_sta + 2));
 
         }
     }
@@ -1028,10 +1028,10 @@ uint8_t msbc_decode_process(uint8_t *fifo, uint8_t *output, uint8_t size)
         memcpy(output, msbc_dest_data_plc_in, 240);
         if ((p_msbc_env->total_packet & 0xFF) == 0)
         {
-            LOG_W("3a_w msbc total packet:%d, rx err:%d, decode err:%d\n", p_msbc_env->total_packet, p_msbc_env->error_packet, p_msbc_env->decode_err);
+            LOG_W("3a_w msbc totalRxCnt:%d, rx errcnt:%d, decode errcnt:%d\n", p_msbc_env->total_packet, p_msbc_env->error_packet, p_msbc_env->decode_err);
 
             uint32_t *p_sco_sta = (uint32_t *)(HCPU_LCPU_SHARE_MEM_BASE_ADDR + 0x40);
-            LOG_W("3a_w msbc lcpu buf err:0x%x, buf full_empty:0x%x, rx cnt:0x%x\n", *p_sco_sta, *(p_sco_sta + 1), *(p_sco_sta + 2));
+            LOG_W("3a_w msbc lcpu buf errcnt:0x%x, buf full_empty:0x%x, rx cnt:0x%x\n", *p_sco_sta, *(p_sco_sta + 1), *(p_sco_sta + 2));
 
         }
         //LOG_D("msbc_proc:packet_sta:%d,src_len_use=%d,dst_len_use=%d\n", packet_status, pbss_t.src_len_used, pbss_t.dst_len_used);

@@ -180,10 +180,9 @@ if BSP_USING_LCD
  
 
         config LCD_USING_JDI387A_JDI
-            bool "1.2 round JDI387A LCD(use LCDC2)"
+            bool "1.2 round JDI387A LCD"
             select LCD_USING_JDI387A
             select BSP_LCDC_USING_JDI_PARALLEL
-            select BSP_USE_LCDC2_ON_HPSYS
             select BSP_USING_ROUND_TYPE_LCD
 
         config LCD_USING_LS013B7DD02_JDI

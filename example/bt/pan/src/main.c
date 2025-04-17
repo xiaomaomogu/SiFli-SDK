@@ -73,7 +73,7 @@ void HAL_MspInit(void)
 #define BT_APP_READY 1
 
 #define BT_APP_CONNECT_PAN  1
-#define PAN_TIMER_MS        1000
+#define PAN_TIMER_MS        3000
 
 typedef struct
 {
@@ -198,6 +198,10 @@ static int bt_app_interface_event_handle(uint16_t type, uint16_t event_id, uint8
         case BT_NOTIFY_PAN_PROFILE_CONNECTED:
         {
             LOG_I("pan connect successed \n");
+            if (g_bt_app_env.pan_connect_timer)
+            {
+                rt_timer_stop(g_bt_app_env.pan_connect_timer);
+            }
         }
         break;
         case BT_NOTIFY_PAN_PROFILE_DISCONNECTED:

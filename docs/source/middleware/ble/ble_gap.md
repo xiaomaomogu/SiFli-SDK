@@ -93,6 +93,43 @@ Dsize 比较复杂，用户可以采用以下方法进行改进：
 
 在 SIFLI BLE SDK 中，对于从设备角色，大部分过程都封装在堆栈中，用户只需要处理 #BLE_GAP_BOND_IND 和 #BLE_GAP_ENCRYPT_IND 。
 
+默认的鉴权方式是just works，如果要修改配对的鉴权方式为passkey entry或者numeric comparison
+需要调用如下函数，设置SDK的IO capabilities
+```c
+uint8_t connection_manager_set_bond_cnf_iocap(uint8_t iocap)
+```
+同时调用设置配对确认的函数为BOND_PENDING
+```c
+uint8_t connection_manager_set_bond_ack(uint8_t state)
+```
+当BOND_PENDING被设置后，用户需要处理#CONNECTION_MANAGER_BOND_AUTH_INFOR消息来回复对应的配对事件
+```c
+case CONNECTION_MANAGER_BOND_AUTH_INFOR:
+{
+	connection_manager_bond_ack_infor_t *info = (connection_manager_bond_ack_infor_t *)data;
+	if (info->request == GAPC_PAIRING_REQ)
+	{
+		// 对端发起配对的事件， 可以做弹窗或者其他处理，最后要调用下面的ack_reply
+		connection_manager_bond_ack_reply(info->conn_idx, GAPC_PAIRING_REQ, true);
+	}
+	else if (info->request == GAPC_TK_EXCH)
+	{
+		uint32_t pin_code = info->confirm_data;
+		// TODO: 显示passkey
+		// 回复对端
+		connection_manager_bond_ack_reply(info->conn_idx, GAPC_TK_EXCH, true);
+	}
+	else if (info->request == GAPC_NC_EXCH)
+	{
+		uintr32_t nc_number = confirm_data;
+		// TODO: 显示nc number
+		// 回复对端
+		connection_manager_bond_ack_reply(info->conn_idx, GAPC_NC_EXCH, true);
+	}
+	break;
+}
+```
+
 ## 消息流
 
 - 广播程序。

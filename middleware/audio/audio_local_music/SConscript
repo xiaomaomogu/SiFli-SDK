@@ -3,7 +3,10 @@ Import('rtconfig')
 from building import *
 
 cwd = GetCurrentDir()
-src = Glob('*.c')
+if not GetDepend('FPGA'):
+    src = Glob('*.c')
+else:
+    src= []
 CPPPATH = [cwd]
 
 if not GetDepend('PKG_USING_AUDIO_TEST_API'):

@@ -1,0 +1,14 @@
+from building import *
+
+cwd = GetCurrentDir()
+
+src = Glob('./*.c')
+path =  [cwd, 
+         os.path.join(cwd, '../include')]
+
+group = DefineGroup('Drivers', src, depend = ['BSP_USING_BOARD_YELLOW_MOUNTAIN'], CPPPATH = path)
+
+if GetDepend('BSP_USING_BOARD_YELLOW_MOUNTAIN'):
+    group = group + SConscript('../YELLOW_MOUNTAIN_BASE/script/SConscript')
+
+Return('group')

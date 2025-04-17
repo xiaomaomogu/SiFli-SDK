@@ -1,7 +1,7 @@
 # peripheral_with_ota example说明和SDK DFU接入
 
 ## 支持的平台
-52x和56x的nor flash芯片
+52x，56x和58x的芯片
 
 ## 概述
 <!-- 例程简介 -->
@@ -17,7 +17,7 @@
 2. 制作升级包的工具ezip.exe，img_toolv37.exe在tool/secureboot目录下，key相关内容在tool/secureboot/sifli02目录下，把以上文件放在同一目录然后按照下文制作升级包部分，制作升级包。
 3. 将升级包通过BLE APP下载，或者uart/jlink下载DFU_DOWNLOAD_REGION区域。
 4. 如果使用sifli ble app下载，将自动安装重启，如果是自行下载，需要调用dfu_offline_install_set_v2，然后调用HAL_PMU_ReBoot进行重启
-5. 重启后将运行升级包重的主程序。
+5. 重启后将运行升级包中的主程序。
 
 ### menuconfig配置
 见接入方法-主工程
@@ -45,7 +45,15 @@ DFU_FLASH_CODE是dfu.bin的区域，size推荐大小384KB
 DFU_DOWNLOAD_REGION是存放下载文件的空间，需要预留一次升级所有文件大小 * 0.7的空间
 ![ptab](./assets/ptab_561.png)
 
- 
+对于nand工程，修改ptab时需要额外进行以下修改
+1. HCPU_FLASH_CODE的宏移动到flash2的hcpu tags中
+2. 添加DFU_DOWNLOAD_REGION和
+3. 额外添加一个DFU_INFO_REGION，128KB
+![ptab](./assets/ptab_525.png)
+4. 添加dfu分区的xip信息
+5. psram1_cbus的HCPU区域，tags的HCPU_FLASH_CODE修改为HCPU_PSRAM_CODE
+6. psram1_cbus添加DFU区域，tags填写为DFU_PSRAM_CODE
+![ptab](./assets/ptab_525_2.png)
 ### Boot loader
 检查对应使用的boot loader的main.c有无以下选择running_imgs[CORE_HCPU]的逻辑，没有需要手动添加
 ![boot1](./assets/bootloader1.png)
@@ -87,14 +95,15 @@ Sconstruct
 
 
 ## 制作升级包
-.\imgtoolv37.exe gen_dfu --img_para app 16 0 dfu 16 6 --key=s01 --sigkey=sig --dfu_id=1 --hw_ver=51 --sdk_ver=7001 --fw_ver=1001001 --com_type=0 --offline_img=2
+.\imgtoolv37.exe gen_dfu --img_para hcpu 16 0 dfu 16 6 --com_type=0 --offline_img=2
 
 所有文件和待制作的升级文件，放到同一目录
 同时制作hcpu和dfu的命令如上，hcpu代表制作hcpu.bin，dfu代表制作dfu.bin
 Bin名字后面的第一个参数用于压缩，16是使用压缩，0是不压缩
 Bin名字后面的第二个参数表示image id，hcpu是0，dfu 是6。
 
-制作文件的数量，可以任意调整，可以只升级HCPU，也可以同时制作多个bin，如果制作了dfu.bin，升级前就会更新Dfu安装程序
+
+制作文件的数量，可以任意调整，可以只升级HCPU，也可以同时制作多个bin，如果制作了dfu.bin，升级前就会更新Dfu安装程序.
 
 制作完成后只需要传输offline_install.bin
 
@@ -127,6 +136,6 @@ board.conf中打开的内容，dfu工程也会编译，导致dfu工程编译一�
 ## 更新记录
 |版本 |日期   |发布说明 |
 |:---|:---|:---|
-|0.0.1 |01/2025 |初始版本 |
-| | | |
-| | | |
+|0.0.1 |01/2025 |初始版本|
+|0.0.2 |03/2025 |增加关于nand芯片DFU的支持，更新制作命令和脚本，去掉无效参数|
+|0.0.3 |03/2025 |增加对58x的支持 |

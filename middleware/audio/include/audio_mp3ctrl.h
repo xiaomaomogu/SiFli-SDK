@@ -26,6 +26,10 @@ typedef struct
     const char *filename; //new filename for mp3ctrl_open or new buffer for mp3ctrl_open_buffer
     uint32_t len;         //buffer len, if handle is return by mp3ctrl_open, len must be -1;
 } mp3_ioctl_cmd_param_t;
+
+#define MP3CTRL_IOCTRL_LOOP_TIMES           0
+#define MP3CTRL_IOCTRL_CHANGE_FILE          1
+#define MP3CTRL_IOCTRL_THREAD_PRIORITY      2
 /*
 open:
     return NULL if file error
@@ -43,18 +47,21 @@ mp3ctrl_handle mp3ctrl_open(audio_type_t type, const char *filename, audio_serve
 mp3ctrl_handle mp3ctrl_open_buffer(audio_type_t type, const char *buf, uint32_t buf_len, audio_server_callback_func callback, void *callback_userdata);
 /**
     cmd:
-       0    set loop times, param is loop times
-       1    switch to new file or new buffer, param is (mp3_ioctl_cmd_param_t *)
-            if handle is return by mp3ctrl_open, can't switch to new buffer;
-            if handle is  return by mp3ctrl_open_buffer, can't switch to new file
-       2    set thread priority, param is priority value
+      MP3CTRL_IOCTRL_LOOP_TIMES
+          set loop times, param is loop times
+      MP3CTRL_IOCTRL_CHANGE_FILE
+           switch to new file or new buffer, param is (mp3_ioctl_cmd_param_t *)
+           if handle is return by mp3ctrl_open, can't switch to new buffer;
+           if handle is  return by mp3ctrl_open_buffer, can't switch to new file
+      MP3CTRL_IOCTRL_THREAD_PRIORITY
+           set thread priority, param is priority value
 */
 int mp3ctrl_ioctl(mp3ctrl_handle handle, int cmd, uint32_t param);
 int mp3ctrl_close(mp3ctrl_handle handle);
 int mp3ctrl_play(mp3ctrl_handle handle);
 int mp3ctrl_pause(mp3ctrl_handle handle);
 int mp3ctrl_resume(mp3ctrl_handle handle);
-int mp3ctrl_seek(mp3ctrl_handle handle, off_t frame_offset);
+int mp3ctrl_seek(mp3ctrl_handle handle, uint32_t seconds);
 int mp3ctrl_getinfo(const char *filename, mp3_info_t *info);
 int mp3_get_id3_start(const char *filename, mp3_id3_info_t *info);
 void mp3_get_id3_end(mp3_id3_info_t *info);

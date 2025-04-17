@@ -85,6 +85,7 @@
     #define CB_IS_IN_EZIP_ADDR_RANGE(addr)  (true)
 #endif
 uint32_t g_uncompress_len;
+uint8_t g_is_nand_flash;
 
 static int dfu_decompress(dfu_image_header_int_t *header, uint8_t *dfu_key, uint8_t *uncompress_buf, uint32_t *pksize, uint8_t *compress_buf, uint32_t *packet_len,
                           uint32_t *total_uncompress_len, uint32_t *uncompress_offset)
@@ -150,7 +151,27 @@ static int dfu_decompress(dfu_image_header_int_t *header, uint8_t *dfu_key, uint
         dfu_encrypt_packet(header, *uncompress_offset, uncompress_buf, *pksize, dfu_key);
     else
     {
-        dfu_packet_write_flash(header, *uncompress_offset, uncompress_buf, *pksize);
+        if (g_is_nand_flash)
+        {
+            uint32_t len_left = *pksize;
+            uint32_t write_offset = 0;
+            uint32_t write_size = 2048;
+            while (len_left != 0)
+            {
+                if (len_left < write_size)
+                {
+                    write_size = len_left;
+                }
+                dfu_packet_write_flash(header, *uncompress_offset + write_offset, uncompress_buf + write_offset, write_size);
+
+                len_left -= write_size;
+                write_offset += write_size;
+            }
+        }
+        else
+        {
+            dfu_packet_write_flash(header, *uncompress_offset, uncompress_buf, *pksize);
+        }
     }
     //LOG_D("pk len %d", *packet_len);
     //dfu_ctrl_update_install_progress(header->img_id, *uncompress_offset, g_uncompress_len);
@@ -690,6 +711,17 @@ int dfu_image_install_flash_offline(dfu_ctrl_env_t *env, uint8_t image_id, uint3
             total_hdr_len = total_uncompress_len = hdr->total_len;
             g_uncompress_len = total_uncompress_len;
             LOG_I("uncompre len %d \r\n", total_uncompress_len);
+
+            uint32_t dest = dfu_get_download_addr_by_imgid(header->img_id, header->flag);
+            int8_t flash_type = dfu_get_flash_type(dest);
+            if (flash_type == DFU_FLASH_TYPE_NAND || flash_type == DFU_FLASH_TYPE_EMMC)
+            {
+                g_is_nand_flash = 1;
+            }
+            else
+            {
+                g_is_nand_flash = 0;
+            }
 
             dfu_packet_erase_flash(header, 0, total_uncompress_len);
 

@@ -55,6 +55,13 @@
 
 #ifdef HAL_SYSTEM_CONFIG_ENABLED
 
+#if defined(LCPU_RUN_SEPERATE_IMG) || defined(LCPU_RUN_ROM_ONLY)
+    #define BSP_CFG_IN_HCPU         (1)
+#else
+    #define BSP_CFG_IN_HCPU         (0)
+#endif // SF32LB52X
+
+
 
 //static uint32_t conf_buf[CFG_SYS_SIZE / 4];
 HAL_RETM_BSS_SECT(sip1_mode, static uint8_t sip1_mode);

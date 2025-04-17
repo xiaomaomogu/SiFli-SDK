@@ -40,7 +40,7 @@ void audio_3a_set_bypass(uint8_t is_bypass, uint8_t mic, uint8_t down)
 {
 }
 
-void audio_3a_open(uint32_t samplerate)
+void audio_3a_open(uint32_t samplerate, uint8_t is_bt_voice)
 {
 }
 

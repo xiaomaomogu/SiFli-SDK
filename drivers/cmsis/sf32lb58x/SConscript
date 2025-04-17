@@ -26,14 +26,18 @@ except:
      
 src=['bf0_pin_const.c']
 src += ['Templates/system_bf0_ap.c']
+src += ['lcpu_config_type.c']
 if GetDepend(['BF0_HCPU']):
     src += ['lcpu_patch.c']
+    src += ['bf0_lcpu_init.c']
     if not GetDepend(['CFG_BOOTLOADER']) and not GetDepend(['BF0_ACPU']):
         src += ['bt_rf_cw_config.c']
         src += ['bt_power_config.c']
     if not GetDepend(['USE_ATE_MODE']):
         src += ['bt_rf_fulcal.c']
-
+if GetDepend(['FPGA']):
+    src += ['ble_rf_fulcal_ad9364.c']
+    src += ['spi_tst_drv.c']
 
 ASFLAGS = ''
 CCFLAGS = ''

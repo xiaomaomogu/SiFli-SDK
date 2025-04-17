@@ -16,6 +16,7 @@ if GetDepend('BF0_HCPU'):
     CPPPATH += [cwd + '/../../external/libhelix-mp3/pub',]
     CPPPATH += [cwd + '/../app_fwk',]
     CPPPATH += [cwd + '/soundplus',]
+    CPPPATH += [cwd + '/vbe_drc',]
 
 
 objs = group = DefineGroup('audio', src,depend = ['AUDIO'],CPPPATH = CPPPATH)

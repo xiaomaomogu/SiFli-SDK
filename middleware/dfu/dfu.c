@@ -1084,7 +1084,7 @@ void dfu_boot_img_in_flash(int flashid)
             is_flash = 0;
         }
 
-        if (coreid < 2 * CORE_MAX)
+        if (coreid < 4 * CORE_MAX)
         {
             coreid %= CORE_MAX;
             if (coreid == CORE_HCPU || coreid == CORE_BL)
@@ -1148,7 +1148,7 @@ void dfu_boot_img_in_flash(int flashid)
         {
             dfu_copy_img(dest, src, img_hdr->length);
         }
-        if (coreid < 2 * CORE_MAX)
+        if (coreid < 4 * CORE_MAX)
         {
             coreid %= CORE_MAX;
             if (coreid == CORE_HCPU || coreid == CORE_BL)

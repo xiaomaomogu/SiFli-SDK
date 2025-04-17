@@ -246,6 +246,30 @@ def gen_lcpu_patch(src,dest):
     print >>fpout, ("#endif\n"),
     fpout.close()
     
+def gen_general_img(name, src, dest):
+    if not os.path.exists(os.path.dirname(dest)):
+        os.makedirs(os.path.dirname(dest))
+    if os.path.isdir(dest):
+        fpout=open(os.path.join(dest, '{}_img.c').format(name),"w+")
+    else:
+        fpout=open(dest,"w+")    
+    print >>fpout, ("#include <stdint.h>\n"),
+    print >>fpout, ("#include <string.h>\n"),
+    print >>fpout, ("#include \"mem_map.h\"\n"),
+    print >>fpout, ("#include \"rtconfig.h\"\n"),
+    print >>fpout, ("#include \"register.h\"\n\n"),
+
+    bin_var_name = "g_{}_bin".format(name)
+    print >>fpout, ("const unsigned int {}[]= {{ ".format(bin_var_name))
+    print_file(src, fpout)
+    print >>fpout, ("};\n")
+    print >>fpout, ("uint32_t {}_ramcode_len(void)\n{{\n".format(name)),
+    print >>fpout, ("\treturn sizeof({});\n".format(bin_var_name)),
+    print >>fpout, ("}\n"),
+
+    fpout.close()
+
+
 if __name__ == '__main__':    
     if (sys.argv[1]=='lcpu'):
         gen_lcpu_img(sys.argv[2], sys.argv[3])
@@ -257,3 +281,5 @@ if __name__ == '__main__':
         gen_lcpu_patch(sys.argv[2], sys.argv[3])
     if (sys.argv[1]=='lcpu_xip'):
         gen_lcpu_img_xip(sys.argv[2], sys.argv[3])
+    if (sys.argv[1]=='general'):
+        gen_general_img(sys.argv[4], sys.argv[2], sys.argv[3])

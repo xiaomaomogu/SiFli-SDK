@@ -17,7 +17,7 @@
 #define BT_MUSIC_EQ_ON_OFF      1  //a2dp sink eq:  0 off, 1 on
 #define OTHER_MUSIC_EQ_ON_OFF   1  //local music eq:  0 off, 1 on
 
-uint8_t get_eq_config(audio_type_t type)
+RT_WEAK uint8_t get_eq_config(audio_type_t type)
 {
     if (type == AUDIO_TYPE_BT_VOICE)
     {

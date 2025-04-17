@@ -176,27 +176,13 @@ void bt_pan_conn(BTS2S_BD_ADDR *bd)
     - bts2_app_interface断开连接接口：bt_interface_disc_ext
     - bts2_app_pan断开接口：bt_pan_disc
 ```c
-//错误码定义
-typedef enum
-{
-    BT_EOK = 0,
-    /* general error code */
-    BT_ERROR_INPARAM            = 0x10000001,  /**参数错误*/
-    BT_ERROR_UNSUPPORTED        = 0x10000002,  /**不支持的功能*/
-    BT_ERROR_TIMEOUT            = 0x10000003,  /**超时*/
-    BT_ERROR_DISCONNECTED       = 0x10000004,  /**连接断开*/
-    BT_ERROR_STATE              = 0x10000005,  /**当前状态不支持该函数调用*/
-    BT_ERROR_PARSING            = 0x10000006,  /**数据解析错误*/
-    BT_ERROR_POWER_OFF          = 0x10000007,  /**已关机*/
-    BT_ERROR_NOTIFY_CB_FULL     = 0x10000008,  /**注册回调已满*/
-    BT_ERROR_DEVICE_EXCEPTION   = 0x10000009,  /**设备故障*/
-    BT_ERROR_RESP_FAIL          = 0x10000010,  /**回复错误*/
-    BT_ERROR_AVRCP_NO_REG       = 0x10000011,  /**对端设备没有注册绝对音量*/
-    BT_ERROR_IN_PROGRESS        = 0x10000012,  /**有其他事件正在处理*/
-    BT_ERROR_OUT_OF_MEMORY      = 0x10000013,  /**没有内存*/
-} bt_err_t;
-
-//用户可调用以下接口断开pan连接，mac为蓝牙地址的数组形式，ext_profile需要传入BT_PROFILE_PAN
+/**
+* @brief            Disconnect with the specified profile
+* @param[in] mac    Remote device address
+* @param[in] ext_profile : Profile value
+*
+* @return           bt_err_t
+**/
 bt_err_t bt_interface_disc_ext(unsigned char *mac, bt_profile_t ext_profile);
 
 //调用这个接口之前会把mac转换为BTS2S_BD_ADDR蓝牙地址格式
@@ -250,16 +236,6 @@ static int bt_notify_handle(uint16_t type, uint16_t event_id, uint8_t *data, uin
     return 0;
 }
 
-//profile断开和连接的通知事件
-typedef struct
-{
-    ///  对端设备地址
-    bt_notify_device_mac_t mac;
-    ///  连接或者断开的profie类型
-    uint8_t profile_type;
-    ///  连接或者断开结果
-    uint8_t res;
-} bt_notify_profile_state_info_t;
 
 static int bt_sifli_notify_pan_event_hdl(uint16_t event_id, uint8_t *data, uint16_t data_len)
 {
@@ -362,6 +338,8 @@ rt_err_t rt_bt_prot_regisetr(struct rt_bt_prot *prot)
     /* save prot */
     bt_prot = prot;
 
+    // rt_kprintf("lwip:rt_bt_prot_regisetr \n");
+
     return RT_EOK;
 }
 
@@ -386,6 +364,7 @@ static rt_err_t rt_bt_lwip_protocol_send(rt_device_t device, struct pbuf *p)
 {
     struct rt_bt_pan_instance *bt_instance = ((struct eth_device *)device)->parent.user_data;
 
+    //LOG_D("F:%s L:%d run", __FUNCTION__, __LINE__);
 
     rt_uint8_t *frame;
 
@@ -393,6 +372,7 @@ static rt_err_t rt_bt_lwip_protocol_send(rt_device_t device, struct pbuf *p)
     if (p->len == p->tot_len)
     {
 
+        // rt_kprintf("enter rt_bt_lwip_protocol_send total ,total len %d\n",p->tot_len);
         frame = (rt_uint8_t *)p->payload;
         rt_bt_prot_transfer_instance(bt_instance, frame, p->tot_len);
         LOG_D("F:%s L:%d run len:%d", __FUNCTION__, __LINE__, p->tot_len);
@@ -408,6 +388,7 @@ static rt_err_t rt_bt_lwip_protocol_send(rt_device_t device, struct pbuf *p)
     /*copy pbuf -> data dat*/
     pbuf_copy_partial(p, frame, p->tot_len, 0);
     /* send data */
+    //rt_kprintf("enter rt_bt_lwip_protocol_send fragment ,total len %d\n",p->tot_len);
     rt_bt_prot_transfer_instance(bt_instance, frame, p->tot_len);
     LOG_D("F:%s L:%d run len:%d", __FUNCTION__, __LINE__, p->tot_len);
     rt_free(frame);
@@ -450,6 +431,7 @@ void bt_lwip_pan_send(struct rt_bt_pan_instance *bt_instance, void *buff, int le
             msg->len = len - 14;
             buff = eth_header + 14;
 
+            //msg->dst_addr = bt_pan_get_remote_mac_address(bt_instance);
             msg->dst_addr.w[0] = (((U16)eth_header[0]) << 8) | (U16)eth_header[1];
             msg->dst_addr.w[1] = (((U16)eth_header[2]) << 8) | (U16)eth_header[3];
             msg->dst_addr.w[2] = (((U16)eth_header[4]) << 8) | (U16)eth_header[5];
@@ -464,6 +446,7 @@ void bt_lwip_pan_send(struct rt_bt_pan_instance *bt_instance, void *buff, int le
             memcpy(p, buff, msg->len);
             msg->payload = p;
             bts2_msg_put(bts2_task_get_pan_task_id(), BTS2M_PAN, msg);
+            //USER_TRACE("bt_lwip_pan_send\n");
         }
     }
     else
@@ -478,6 +461,7 @@ case BTS2MU_PAN_DATA_IND:
     BTS2S_PAN_DATA_IND *msg;
     msg = (BTS2S_PAN_DATA_IND *)bts2_app_data->recv_msg;
 
+    //USER_TRACE(" BTS2MU_PAN_DATA_IND\n");
     msg->len = msg->len + 14;
     memcpy(msg->payload, msg->dst_addr.w, 6);
     memcpy(msg->payload + 6, msg->src_addr.w, 6);
@@ -517,18 +501,58 @@ int bt_sifli_notify_pan_event_hdl(uint16_t event_id, uint8_t *data, uint16_t dat
 {
     switch (event_id)
     {
-    case BT_NOTIFY_PAN_PROFILE_CONNECTED:
+    // PAN CONNECTED
+    case BTS2MU_PAN_CONN_IND:
     {
-        bt_notify_profile_state_info_t *profile_info = (bt_notify_profile_state_info_t *)data;
-        //用户自己实现相应的处理函数
+        BTS2S_PAN_CONN_IND *msg;
+
+        msg = (BTS2S_PAN_CONN_IND *)bts2_app_data->recv_msg;
+
+        if (msg->res == BTS2_SUCC)
+        {
+            bt_notify_profile_state_info_t profile_state;
+
+            //初始化lwip
+            lwip_sys_init();
+            bt_lwip_pan_control_tcpip(bts2_app_data);
+        }
+        USER_TRACE(" BTS2MU_PAN_CONN_IND\n");
+        //用户可以在pan连上之后，开始使用网络服务，具体可以参照lwip源代码下的app文件
         break;
     }
-    case BT_NOTIFY_PAN_PROFILE_DISCONNECTED:
+    //PAN DISCONNECTED
+    case BTS2MU_PAN_DISC_IND:
     {
-        bt_notify_profile_state_info_t *profile_info = (bt_notify_profile_state_info_t *)data;
-        //用户自己实现相应的处理函数
+        BTS2S_PAN_DISC_IND *msg;
+        msg = (BTS2S_PAN_DISC_IND *)bts2_app_data->recv_msg;
+
+        //解除prot的注册
+        bt_lwip_pan_detach_tcpip(bts2_app_data);
+
+        bt_notify_profile_state_info_t profile_state;
+
+        lwip_system_uninit();
+        INFO_TRACE(" BTS2MU_PAN_DISC_IND\n");
         break;
     }
+    //data receive
+    case BTS2MU_PAN_DATA_IND:
+    {
+        BTS2S_PAN_DATA_IND *msg;
+        msg = (BTS2S_PAN_DATA_IND *)bts2_app_data->recv_msg;
+
+        msg->len = msg->len + 14;
+        memcpy(msg->payload, msg->dst_addr.w, 6);
+        memcpy(msg->payload + 6, msg->src_addr.w, 6);
+        msg->payload[12] = (msg->ether_type >> 8);
+        msg->payload[13] = (msg->ether_type & 0xff);
+
+        //传给注册的网络设备
+        rt_bt_instance_transfer_prot(&bt_pan_instance[0], (void *)msg->payload, msg->len);
+        bfree(msg->payload);
+        break;
+    }
+    
     default:
         return -1;
     }

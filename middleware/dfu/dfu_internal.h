@@ -88,6 +88,9 @@
 #define DFU_OTA_VERSION_LEN_MAX 32
 #define DFU_HASH_VERIFY_WDT_PET_FREQUENCY 20
 
+#define DFU_EMMC_ADDR_RANGE 0xA0000000
+#define DFU_EMMC_ADDR_RANGE_FLAG 0xF0000000
+
 #define DFU_PROTOCOL_PKT_BUFF_ALLOC(msg_id, msg_struct) \
     (msg_struct *)dfu_protocol_packet_buffer_alloc(msg_id, sizeof(msg_struct));
 
@@ -220,6 +223,7 @@ typedef enum
 {
     DFU_FLASH_TYPE_NAND,
     DFU_FLASH_TYPE_NOR,
+    DFU_FLASH_TYPE_EMMC,
 } dfu_flash_type_t;
 
 typedef enum
@@ -873,6 +877,11 @@ int dfu_image_install_flash_offline(dfu_ctrl_env_t *env, uint8_t image_id, uint3
 
 uint32_t dfu_crc32mpeg2(uint8_t *data, uint32_t len);
 
+int8_t dfu_get_flash_type(uint32_t dest);
+
+uint32_t dfu_get_download_addr_by_imgid(uint8_t img_id, uint8_t flag);
+
+uint32_t crc32_update(uint32_t crc, const uint8_t *data, size_t len);
 
 #endif //__DFU_INTERNAL_H
 

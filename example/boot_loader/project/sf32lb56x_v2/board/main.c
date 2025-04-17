@@ -108,9 +108,22 @@ void dfu_boot_img_in_flash(int flashid)
 void boot_images_help()
 {
     dfu_install_info info;
+    dfu_install_info info_ext;
     if (DFU_DOWNLOAD_REGION_START_ADDR != FLASH_UNINIT_32)
     {
         g_flash_read(DFU_DOWNLOAD_REGION_START_ADDR, (const int8_t *)&info, sizeof(dfu_install_info));
+    }
+    if (DFU_INFO_REGION_START_ADDR != FLASH_UNINIT_32)
+    {
+        g_flash_read(DFU_INFO_REGION_START_ADDR, (const int8_t *)&info_ext, sizeof(dfu_install_info));
+    }
+    if (info.magic == SEC_CONFIG_MAGIC && info_ext.magic == SEC_CONFIG_MAGIC)
+    {
+        info = info_ext;
+    }
+
+    if (DFU_DOWNLOAD_REGION_START_ADDR != FLASH_UNINIT_32)
+    {
         if ((HAL_Get_backup(RTC_BAKCUP_OTA_FORCE_MODE) == DFU_FORCE_MODE_REBOOT_TO_OFFLINE_OTA_MANAGER) ||
                 (info.magic == SEC_CONFIG_MAGIC) && (info.install_state == DFU_OFFLINE_INSTALL))
         {

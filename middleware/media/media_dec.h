@@ -149,7 +149,7 @@ typedef struct
 } video_info_t;
 
 /*------------API for special app -----------*/
-int media_audio_get(AVFrame *frame, uint16_t *audio_data);
+int media_audio_get(AVFrame *frame, uint16_t *audio_data, uint32_t audio_data_size);
 int media_decode_video(ffmpeg_handle thiz,
                        int *got_frame,
                        AVPacket *p_AVPacket);

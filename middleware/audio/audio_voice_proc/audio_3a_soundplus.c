@@ -73,6 +73,7 @@ typedef struct audio_3a_tag
     uint8_t     state;
     uint8_t     is_cvsd;
     uint8_t     cvsd_dump_count;
+    uint8_t     is_bt_voice;
     uint8_t     is_far_putted;
     uint8_t     is_far_using;
     uint16_t    frame_size;    //unit is bytes
@@ -115,13 +116,13 @@ static void audio_3a_module_free(audio_3a_t *env)
 }
 
 
-void audio_3a_open(uint32_t samplerate)
+void audio_3a_open(uint32_t samplerate, uint8_t is_bt_voice)
 {
     audio_3a_t *env = &g_audio_3a_env;
     if (env->state == 0)
     {
         env->is_far_putted = 0;
-
+        env->is_bt_voice = is_bt_voice;
         LOG_I("3a_w open samplearate=%ld", samplerate);
         if (samplerate == 8000)
         {
@@ -141,7 +142,8 @@ void audio_3a_open(uint32_t samplerate)
             env->frame_size = SOUNDPLUS_FRAME_SIZE;
             audio_3a_module_init(env, 16000);
         }
-        bt_voice_open(samplerate);
+        if (is_bt_voice)
+            bt_voice_open(samplerate);
     }
 }
 
@@ -151,7 +153,8 @@ void audio_3a_close()
     {
         LOG_I("3a_w close");
         audio_3a_module_free(&g_audio_3a_env);
-        bt_voice_close();
+        if (g_audio_3a_env.is_bt_voice)
+            bt_voice_close();
 
         soundplus_deinit();
         soundplus_rx_deinit();

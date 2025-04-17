@@ -176,7 +176,7 @@ static uint32_t dfu_backup_addr_ex_get()
     return flash_addr;
 }
 
-static uint32_t dfu_get_download_addr_by_imgid(uint8_t img_id, uint8_t flag)
+uint32_t dfu_get_download_addr_by_imgid(uint8_t img_id, uint8_t flag)
 {
     uint32_t flash_addr = 0xFFFFFFFF;
 
@@ -298,14 +298,28 @@ int dfu_packet_erase_flash(dfu_image_header_int_t *header, uint32_t offset, uint
     uint32_t dest = dfu_get_download_addr_by_imgid(header->img_id, header->flag);
     int ret = -1;
 
-    uint32_t align_size;
+    uint32_t align_size = 1;
+    int8_t flash_type = dfu_get_flash_type(dest);
+
+    if (flash_type == DFU_FLASH_TYPE_NOR)
+    {
 #ifdef SOC_SF32LB55X
-    // erase should 8k aligned
-    align_size = 0x2000;
+        // erase should 8k aligned
+        align_size = 0x2000;
 #else
-    // none 55x 4k aligned
-    align_size = 0x1000;
+        // none 55x 4k aligned
+        align_size = 0x1000;
 #endif
+    }
+    else if (flash_type == DFU_FLASH_TYPE_NAND)
+    {
+        align_size = 0x20000;
+    }
+    else if (flash_type == DFU_FLASH_TYPE_EMMC)
+    {
+        align_size = 1;
+    }
+
     if (size % align_size != 0)
     {
         size = (size + align_size) / align_size * align_size;
@@ -314,19 +328,7 @@ int dfu_packet_erase_flash(dfu_image_header_int_t *header, uint32_t offset, uint
     dfu_erase_download_buffer_size_check(header->img_id, header->flag, size);
 
     LOG_I("dfu_packet_erase_flash dest 0x%x, size %d", dest, size);
-    if (dest != 0xFFFFFFFF)
-    {
-        int ret1 = rt_flash_erase(dest, size);
-        if (ret1 != 0)
-        {
-            ret = -2;
-            LOG_E("dfu_packet_erase_flash Fail!");
-        }
-        else
-        {
-            ret = 0;
-        }
-    }
+    ret = dfu_flash_erase(dest, size);
     return ret;
 }
 
@@ -337,11 +339,7 @@ int dfu_packet_write_flash(dfu_image_header_int_t *header, uint32_t offset, uint
     int ret = -1;
     if (dest != 0xFFFFFFFF)
     {
-        uint32_t wr_size = rt_flash_write(dest + offset, data, size);
-        if (wr_size != size)
-            ret = -2;
-        else
-            ret = 0;
+        ret = dfu_flash_write(dest + offset, data, size);
     }
     return ret;
 }
@@ -352,11 +350,7 @@ int dfu_packet_read_flash(dfu_image_header_int_t *header, uint32_t offset, uint8
     int ret = -1;
     if (dest != 0xFFFFFFFF)
     {
-        uint32_t rd_size = rt_flash_read(dest + offset, data, size);
-        if (rd_size != size)
-            ret = -2;
-        else
-            ret = 0;
+        ret = dfu_flash_read(dest + offset, data, size);
     }
     return ret;
 }
@@ -376,40 +370,169 @@ uint8_t is_addr_in_flash(uint32_t addr)
     return is_in_flash;
 }
 
+int8_t dfu_get_flash_type(uint32_t dest)
+{
+    uint8_t flash_type;
+    FLASH_HandleTypeDef *fhandle = rt_nand_get_handle(dest);
+    if (fhandle != NULL)
+    {
+        // nand flash
+        flash_type = DFU_FLASH_TYPE_NAND;
+    }
+    else
+    {
+        extern FLASH_HandleTypeDef *Addr2Handle(uint32_t addr);
+        fhandle = Addr2Handle(dest);
+        if (fhandle == NULL)
+        {
+            if ((dest & DFU_EMMC_ADDR_RANGE_FLAG) == DFU_EMMC_ADDR_RANGE)
+            {
+                flash_type = DFU_FLASH_TYPE_EMMC;
+            }
+            else
+            {
+                LOG_I("invalid addr 0x%x", dest);
+                return -3;
+            }
+        }
+        else
+        {
+            flash_type = DFU_FLASH_TYPE_NOR;
+        }
+    }
+
+    return flash_type;
+}
+
 int dfu_flash_read(uint32_t addr, uint8_t *data, int size)
 {
+    int8_t flash_type = dfu_get_flash_type(addr);
+
     int ret;
-    ret = rt_flash_read(addr, data, size);
+    uint32_t rd_size;
+    if (flash_type == DFU_FLASH_TYPE_NOR)
+    {
+        rd_size = rt_flash_read(addr, data, size);
+    }
+    else if (flash_type == DFU_FLASH_TYPE_NAND)
+    {
+        rd_size = rt_nand_read(addr, data, size);
+    }
+    else if (flash_type == DFU_FLASH_TYPE_EMMC)
+    {
+        // TODO: implementation emmc read
+    }
+    else
+    {
+        rd_size = 0;
+    }
+
+    if (rd_size != size)
+        ret = -2;
+    else
+        ret = 0;
     return ret;
 }
 
 int dfu_flash_write(uint32_t addr, uint8_t *data, int size)
 {
+    int8_t flash_type = dfu_get_flash_type(addr);
     int ret;
-    uint32_t wr_size = rt_flash_write(addr, data, size);
-    if (wr_size == size)
+    uint32_t wr_size;
+
+    if (flash_type == DFU_FLASH_TYPE_NOR)
     {
-        ret = 0;
+        wr_size = rt_flash_write(addr, data, size);
+    }
+#ifndef SOC_SF32LB55X
+    else if (flash_type == DFU_FLASH_TYPE_NAND)
+    {
+        FLASH_HandleTypeDef *fhandle = rt_nand_get_handle(addr);
+        uint32_t page_size = 2048;
+        uint32_t wr_size;
+        wr_size = rt_nand_write_page(addr, data, size, NULL, 0);
+        if (size != page_size)
+        {
+            size = page_size;
+        }
+    }
+#endif
+    else if (flash_type == DFU_FLASH_TYPE_EMMC)
+    {
+        // TODO: implementation emmc write
     }
     else
     {
-        ret = -2;
+        wr_size = 0;
     }
+
+    if (wr_size != size)
+        ret = -2;
+    else
+        ret = 0;
     return ret;
 }
 
 int dfu_flash_erase(uint32_t dest, uint32_t size)
 {
-    int ret = rt_flash_erase(dest, size);
-    if (ret != 0)
+    int8_t flash_type = dfu_get_flash_type(dest);
+    int ret, ret1;
+    uint32_t align_size = 1;
+
+    if (flash_type == DFU_FLASH_TYPE_NOR)
+    {
+#ifdef SOC_SF32LB55X
+        // erase should 8k aligned
+        align_size = 0x2000;
+#else
+        // none 55x 4k aligned
+        align_size = 0x1000;
+#endif
+    }
+    else if (flash_type == DFU_FLASH_TYPE_NAND)
+    {
+        align_size = 0x20000;
+    }
+    else if (flash_type == DFU_FLASH_TYPE_EMMC)
+    {
+        align_size = 1;
+    }
+
+    if (size % align_size != 0)
+    {
+        size = (size + align_size) / align_size * align_size;
+    }
+
+    LOG_I("dfu_flash_erase addr 0x%x, size 0x%x", dest, size);
+
+    if (flash_type == DFU_FLASH_TYPE_NOR)
+    {
+        ret1 = rt_flash_erase(dest, size);
+    }
+    else if (flash_type == DFU_FLASH_TYPE_NAND)
+    {
+        ret1 = rt_nand_erase(dest, size);
+    }
+    else if (flash_type == DFU_FLASH_TYPE_EMMC)
+    {
+        ret1 = 0;
+    }
+    else
+    {
+        ret = -3;
+        return ret;
+    }
+
+    if (ret1 != 0)
     {
         ret = -2;
-        LOG_E("dfu_packet_erase_flash Fail!");
+        LOG_E("dfu_packet_erase_flash Fail! %d", ret1);
     }
     else
     {
         ret = 0;
     }
+
     return ret;
 }
 

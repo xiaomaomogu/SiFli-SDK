@@ -61,6 +61,7 @@
 #include "ipc/dataqueue.h"
 #include "drivers/audio.h"
 #include <audio_server.h>
+#include "sifli_resample.h"
 #include <gui_app_pm.h>
 #include "bf0_pm.h"
 #if RT_USING_DFS
@@ -88,12 +89,12 @@
 
 #include "bf0_hal_audprc.h"
 #include "drv_audprc.h"
+#include "drv_i2s.h"
 
 /* ---------------------audio server config start-------------------------- */
 
 #define START_RX_IN_TX_INTERUPT     1
-#define SOFTWARE_TX_MIX_ENABLE      0
-
+#define PDM_DEVICE_NAME             "pdm1"
 #undef audio_mem_malloc
 #undef audio_mem_free
 #undef audio_mem_calloc
@@ -160,7 +161,12 @@ enum
 /*------------------   define ----------------------*/
 #define m_max(a, b)  ((a) > (b) ? (a ): (b))
 
-#define TX_DMA_SIZE     (CODEC_DATA_UNIT_LEN * 5)
+#if defined(SOFTWARE_TX_MIX_ENABLE) || defined(AUDIO_RX_USING_I2S)
+    #define TX_DMA_SIZE         (CODEC_DATA_UNIT_LEN)
+#else
+    #define TX_DMA_SIZE         (CODEC_DATA_UNIT_LEN * 5)
+#endif
+
 #define AUDIO_API
 #define AUDIO_CLIENT_MAGIC   0x66778899
 
@@ -180,6 +186,7 @@ enum
 #define  AUDIO_SERVER_EVENT_TX_FULL_EMPTY   (1 << 13)
 #define  AUDIO_SERVER_EVENT_TX_I2S1         (1 << 14)
 #define  AUDIO_SERVER_EVENT_TX_I2S2         (1 << 15)
+#define  AUDIO_SERVER_EVENT_TX_BLE_SINK     (1 << 16)
 
 #define AUDIO_SERVER_EVENT_ALL  ( \
                                 AUDIO_SERVER_EVENT_CMD| \
@@ -194,6 +201,7 @@ enum
                                 AUDIO_SERVER_EVENT_A2DP_RESUME| \
                                 AUDIO_SERVER_EVENT_TX_I2S1 | \
                                 AUDIO_SERVER_EVENT_TX_I2S2 | \
+                                AUDIO_SERVER_EVENT_TX_BLE_SINK | \
                                 0 \
                                 )
 
@@ -216,15 +224,16 @@ enum
 #define AUDIO_LOCAL_MUSIC_BIT   TYPE_TO_MIX_BIT(AUDIO_TYPE_LOCAL_MUSIC)
 #define AUDIO_LOCAL_RING_BIT    TYPE_TO_MIX_BIT(AUDIO_TYPE_LOCAL_RING)
 #define AUDIO_MODEM_VOICE_BIT   TYPE_TO_MIX_BIT(AUDIO_TYPE_MODEM_VOICE)
+#define AUDIO_MIX_ALL           0xFFFF
 
-#define BT_VOICE_MIX_WITH       (AUDIO_ALARM_BIT | AUDIO_NOTIFY_BIT | AUDIO_LOCAL_RING_BIT)
-#define LOCAL_RING_MIX_WITH     (AUDIO_ALARM_BIT | AUDIO_NOTIFY_BIT | AUDIO_LOCAL_MUSIC_BIT | AUDIO_BT_MUSIC_BIT)
-#define ALARM_MIX_WITH          (AUDIO_LOCAL_RING_BIT | AUDIO_NOTIFY_BIT | AUDIO_LOCAL_MUSIC_BIT | AUDIO_BT_MUSIC_BIT)
-#define NOTIFY_MIX_WITH         (AUDIO_LOCAL_RING_BIT | AUDIO_ALARM_BIT | AUDIO_LOCAL_MUSIC_BIT | AUDIO_BT_MUSIC_BIT)
-#define LOCAL_MUSIC_MIX_WITH    (AUDIO_LOCAL_RING_BIT | AUDIO_ALARM_BIT | AUDIO_NOTIFY_BIT)
-#define BT_MUSIC_MIX_WITH       (AUDIO_LOCAL_RING_BIT | AUDIO_ALARM_BIT | AUDIO_NOTIFY_BIT)
-#define MODEM_VOICE_MIX_WITH    (AUDIO_LOCAL_RING_BIT | AUDIO_ALARM_BIT | AUDIO_NOTIFY_BIT|AUDIO_BT_MUSIC_BIT)
-#define LOCAL_RECORD_MIX_WITH   (AUDIO_LOCAL_RING_BIT | AUDIO_ALARM_BIT | AUDIO_NOTIFY_BIT|AUDIO_BT_MUSIC_BIT)
+#define BT_VOICE_MIX_WITH       (0)
+#define LOCAL_RING_MIX_WITH     (AUDIO_MIX_ALL)
+#define ALARM_MIX_WITH          (AUDIO_MIX_ALL)
+#define NOTIFY_MIX_WITH         (AUDIO_MIX_ALL)
+#define LOCAL_MUSIC_MIX_WITH    (AUDIO_MIX_ALL)
+#define MODEM_VOICE_MIX_WITH    0
+#define BT_MUSIC_MIX_WITH       (AUDIO_MIX_ALL)
+#define LOCAL_RECORD_MIX_WITH   (AUDIO_MIX_ALL)
 
 
 struct audio_client_base_t
@@ -239,10 +248,17 @@ struct audio_client_base_t
     audio_parameter_t           parameter;
     struct rt_ringbuffer        ring_buf;
     uint8_t                     *ring_pool;
+#if SOFTWARE_TX_MIX_ENABLE
+    sifli_resample_t            *resample;
+    int16_t                     resample_dst[TX_DMA_SIZE];
+    uint32_t                    resample_dst_samplerate;
+    uint8_t                     resample_dst_ch;
+#endif
     audio_rwflag_t              rw_flag;
     audio_type_t                audio_type;
     audio_device_e              device_specified;
     audio_device_e              device_using;
+    uint8_t                     is_3a_opened;
     uint8_t                     is_fade_vol; // 1--fade out, 2 fade in
     uint8_t                     is_fade_end;
     uint8_t                     fade_vol_steps;
@@ -274,6 +290,7 @@ typedef struct
     int                         last_volume;
     uint32_t                    tx_dma_size;
     uint16_t                    rx_drop_cnt;
+    uint8_t                     is_need_3a;
     uint8_t                     tx_channels;
     uint8_t                     rx_channels;
     uint8_t                     opened_map_flag;
@@ -309,7 +326,10 @@ typedef struct _audio_device_ctrl_t
     rt_list_t               running_client_list;
     audio_device_e          device_type;
     uint32_t                rx_samplerate;
-    struct rt_ringbuffer    *tx_mixed_rb;
+#if SOFTWARE_TX_MIX_ENABLE
+    uint8_t                 *tx_mixed_pool;
+    struct rt_ringbuffer    tx_mixed_rb;
+#endif
     uint32_t                tx_mix_dst_samplerate;
     uint8_t                 tx_mix_dst_channel;
     uint8_t                 is_tx_need_mix;
@@ -329,7 +349,7 @@ typedef struct
     rt_list_t           suspend_client_list;
     uint8_t             volume;//0~15
     uint8_t             private_volume[AUDIO_TYPE_NUMBER];
-    uint8_t             is_need_3a;
+    uint8_t             is_bt_3a;
     uint8_t             is_bt_music_working;
     uint8_t             is_server_inited;
     uint8_t             public_is_rx_mute;
@@ -389,6 +409,8 @@ audio_dump_ctrl_t audio_dump_debug[ADUMP_NUM];
 
 static bool a2dp_sink_need_trigger = 1;
 
+device_open_parameter_t g_ble_bap_sink_parameter;
+
 /*
  if could not mix, than check priority, if priority is same, then new audio suspend old audio
 */
@@ -401,20 +423,22 @@ static const audio_mix_policy_t mix_policy[AUDIO_TYPE_NUMBER] =
     [AUDIO_TYPE_BT_MUSIC]      = {90, BT_MUSIC_MIX_WITH},
     [AUDIO_TYPE_LOCAL_MUSIC]   = {80, LOCAL_MUSIC_MIX_WITH},
     [AUDIO_TYPE_ALARM]         = {70, ALARM_MIX_WITH},
-    [AUDIO_TYPE_LOCAL_RING]    = {70, LOCAL_RING_MIX_WITH},
+    [AUDIO_TYPE_TEL_RING]      = {91, LOCAL_RING_MIX_WITH},
     [AUDIO_TYPE_NOTIFY]        = {70, NOTIFY_MIX_WITH},
+    [AUDIO_TYPE_LOCAL_RING]    = {70, LOCAL_RING_MIX_WITH},
 };
 #else
 static const audio_mix_policy_t mix_policy[AUDIO_TYPE_NUMBER] =
 {
-    [AUDIO_TYPE_BT_VOICE]      = {94, 0},
+    [AUDIO_TYPE_BT_VOICE]      = {99, 0},
     [AUDIO_TYPE_BT_MUSIC]      = {11, 0},
     [AUDIO_TYPE_ALARM]         = {88, 0},
     [AUDIO_TYPE_NOTIFY]        = {80, 0},
     [AUDIO_TYPE_LOCAL_MUSIC]   = {10, 0},
     [AUDIO_TYPE_LOCAL_RING]    = {92, 0},
     [AUDIO_TYPE_LOCAL_RECORD]  = {93, 0},
-    [AUDIO_TYPE_MODEM_VOICE]   = {94, 0},
+    [AUDIO_TYPE_TEL_RING]      = {94, 0},
+    [AUDIO_TYPE_MODEM_VOICE]   = {99, 0},
 };
 #endif
 
@@ -425,6 +449,7 @@ static void start_rx(audio_device_speaker_t *my);
 static audio_client_t device_get_tx_in_running(audio_device_ctrl_t *device, int index);
 static audio_client_t device_get_rx_in_running(audio_device_ctrl_t *device);
 static void audio_device_change(audio_server_t *server);
+static int audio_write_resample(audio_client_t c, uint8_t *data, uint32_t data_size);
 
 RT_WEAK rt_err_t pm_scenario_start(pm_scenario_name_t scenario)
 {
@@ -443,7 +468,10 @@ static uint8_t is_can_mix(audio_client_t client_old, audio_client_t client_new, 
     RT_ASSERT(client_old && client_new);
     RT_ASSERT(client_old->audio_type < AUDIO_TYPE_NUMBER && client_new->audio_type < AUDIO_TYPE_NUMBER);
     if (device->device_type != AUDIO_DEVICE_SPEAKER
-            && device->device_type != AUDIO_DEVICE_A2DP_SINK)
+#if TWS_MIX_ENABLE
+            && device->device_type != AUDIO_DEVICE_A2DP_SINK
+#endif
+            && 1)
     {
         LOG_I("device %d not support mix", device->device_type);
         return 0;
@@ -508,7 +536,7 @@ static void inline speaker_update_volume(audio_device_speaker_t *my, int16_t spf
     int     volx2;
     uint8_t vol = g_server.volume;
     audio_client_t first;
-#if SOFTWARE_TX_MIX_ENABLE
+#if 0 //SOFTWARE_TX_MIX_ENABLE
     RT_ASSERT(0); //todo
     first = NULL;
     audio_type = AUDIO_TYPE_LOCAL_MUSIC;
@@ -525,7 +553,12 @@ static void inline speaker_update_volume(audio_device_speaker_t *my, int16_t spf
     {
         vol = g_server.private_volume[audio_type];
     }
-
+#if VOLUME_0_MUTE
+    if (vol == 0)
+    {
+        memset(spframe, 0, len);
+    }
+#endif
     if (eq_is_working())
     {
         volx2 = eq_get_default_volumex2();
@@ -566,7 +599,6 @@ static void inline speaker_update_volume(audio_device_speaker_t *my, int16_t spf
         else if (my->audcodec_dev)
         {
 #if SOFTWARE_TX_MIX_ENABLE
-            RT_ASSERT(0);
             //todo: multi stream fade out
 #else
             if (first->is_fade_vol && !first->is_fade_end)
@@ -707,17 +739,30 @@ static void inline speaker_update_volume(audio_device_speaker_t *my, int16_t spf
 
 static inline void process_speaker_tx(audio_server_t *server, audio_device_speaker_t *my)
 {
-    rt_uint32_t  datanum, getnum;
+    struct rt_ringbuffer  *p_rb;
+    rt_uint32_t  getnum;
+    uint8_t is_suspended;
+    uint8_t has_callback;
+
     audio_client_t first = device_get_tx_in_running(my->parent, 0);
-    if (!my->parent->is_busy || (my->opened_map_flag & OPEN_MAP_TX) == 0 || !server->devices_ctrl[AUDIO_DEVICE_SPEAKER].tx_count || !first)
+    if ((my->opened_map_flag & OPEN_MAP_TX) == 0 || !my->tx_ref || !first)
     {
-        //LOG_I("invlide tx event tx cnt %d first=%p", server->devices_ctrl[AUDIO_DEVICE_SPEAKER].tx_count, first);
+        //LOG_I("invlide tx ref=%d map=%d first=%p", my->tx_ref, (my->opened_map_flag & OPEN_MAP_TX), first);
         return;
     }
-
+    is_suspended = first->is_suspended;
+    has_callback = (first->callback != NULL);
 
 #if SOFTWARE_TX_MIX_ENABLE
-    RT_ASSERT(0); //todo
+    audio_client_t second = device_get_tx_in_running(my->parent, 1);
+    if (second)
+    {
+        is_suspended = (is_suspended && second->is_suspended);
+        has_callback = (has_callback || (second->callback != NULL));
+    }
+    p_rb = &my->parent->tx_mixed_rb;
+#else
+    p_rb = &first->ring_buf;
 #endif
 #if START_RX_IN_TX_INTERUPT
     if (my->tx_ready == 1)
@@ -728,42 +773,51 @@ static inline void process_speaker_tx(audio_server_t *server, audio_device_speak
     }
 #endif
 
-    datanum = rt_ringbuffer_data_len(&first->ring_buf);
-    getnum = 0;
-
     if (my->tx_enable == 0)
     {
         memset(my->tx_data_tmp, 0, my->tx_dma_size);
-        if (server->is_need_3a)
+        if (my->is_need_3a)
         {
             audio_3a_far_put(my->tx_data_tmp, CODEC_DATA_UNIT_LEN);
         }
+#if defined(AUDIO_TX_USING_I2S)
+        bf0_i2s_device_write(my->i2s, 0, my->tx_data_tmp, my->tx_dma_size);
+#else
         bf0_audprc_device_write(my->audprc_dev, 0, my->tx_data_tmp, my->tx_dma_size);
+#endif
     }
     else
     {
-        if (rt_ringbuffer_data_len(&first->ring_buf) < my->tx_dma_size)
+        if (rt_ringbuffer_data_len(p_rb) < my->tx_dma_size)
         {
             memset(my->tx_data_tmp, 0, my->tx_dma_size);
-            if (server->is_need_3a)
+            if (my->is_need_3a)
             {
                 audio_3a_far_put(my->tx_data_tmp, CODEC_DATA_UNIT_LEN);
             }
+
+#if defined(AUDIO_TX_USING_I2S)
+            bf0_i2s_device_write(my->i2s, 0, my->tx_data_tmp, my->tx_dma_size);
+#else
             bf0_audprc_device_write(my->audprc_dev, 0, my->tx_data_tmp, my->tx_dma_size);
+#endif
             my->tx_empty_cnt++;
-            if (!first->is_suspended && g_ae_log)
+            if (!is_suspended && g_ae_log)
             {
                 // Audio Empty
                 rt_kprintf("AE times %d\r\n", my->tx_empty_cnt);
             }
+#if SOFTWARE_TX_MIX_ENABLE
+            rt_event_send(&server->event, AUDIO_SERVER_EVENT_TX_HALF_EMPTY);
+#endif
         }
         else
         {
             my->tx_empty_cnt = 0;
-            getnum = rt_ringbuffer_get(&first->ring_buf, my->tx_data_tmp, my->tx_dma_size);
+            getnum = rt_ringbuffer_get(p_rb, my->tx_data_tmp, my->tx_dma_size);
             RT_ASSERT(getnum == my->tx_dma_size);
             speaker_update_volume(my, (int16_t *)my->tx_data_tmp, my->tx_dma_size / 2);
-            if (server->is_need_3a)
+            if (my->is_need_3a)
             {
 #if DEBUG_FRAME_SYNC
                 if (my->debug_tx_index < FRAME_DEBUG_MAX)
@@ -780,21 +834,31 @@ static inline void process_speaker_tx(audio_server_t *server, audio_device_speak
                 my->rx_uplink_send_start = 1;
             }
             //audprc_get_tx_channel();
+#if defined(AUDIO_TX_USING_I2S)
+            bf0_i2s_device_write(my->i2s, 0, my->tx_data_tmp, my->tx_dma_size);
+#else
             bf0_audprc_set_tx_channel(0);
             bf0_audprc_device_write(my->audprc_dev, 0, my->tx_data_tmp, my->tx_dma_size);
+#endif
         }
-
-        if (first->callback && !first->is_suspended) //no need wakeup audio server
+#if SOFTWARE_TX_MIX_ENABLE
+        if (rt_ringbuffer_space_len(p_rb) >= rt_ringbuffer_get_size(p_rb) / 2)
         {
-            if (rt_ringbuffer_data_len(&first->ring_buf) < my->tx_dma_size)
+            rt_event_send(&server->event, AUDIO_SERVER_EVENT_TX_HALF_EMPTY);
+        }
+#else
+        if (has_callback && !is_suspended) //no need wakeup audio server
+        {
+            if (rt_ringbuffer_data_len(p_rb) < my->tx_dma_size)
             {
                 rt_event_send(&server->event, AUDIO_SERVER_EVENT_TX_FULL_EMPTY);
             }
-            else if (rt_ringbuffer_space_len(&first->ring_buf) >= rt_ringbuffer_get_size(&first->ring_buf) / 2)
+            else if (rt_ringbuffer_space_len(p_rb) >= rt_ringbuffer_get_size(p_rb) / 2)
             {
                 rt_event_send(&server->event, AUDIO_SERVER_EVENT_TX_HALF_EMPTY);
             }
         }
+#endif
     }
 }
 
@@ -831,7 +895,13 @@ static inline void process_speaker_rx(audio_server_t *server, audio_device_speak
     audio_tick_in(AUDIO_UPLINK_TIME);
 
     readlen = CODEC_DATA_UNIT_LEN;
+#if defined(AUDIO_RX_USING_I2S)
+    len = rt_device_read(my->i2s, 0, my->rx_data_tmp, readlen);
+#elif defined(AUDIO_RX_USING_PDM)
+    len = rt_device_read(my->pdm, 0, my->rx_data_tmp, readlen);
+#else
     len = rt_device_read(my->audprc_dev, 0, my->rx_data_tmp, readlen);
+#endif
     if (len != readlen)
     {
         LOG_I("read error len=%d", len);
@@ -839,7 +909,7 @@ static inline void process_speaker_rx(audio_server_t *server, audio_device_speak
     }
 
     LOG_D("mic_rx_ind readlen:%d", len);
-    if (server->is_need_3a)
+    if (my->is_need_3a)
     {
         if (my->rx_drop_cnt < 25)
         {
@@ -847,7 +917,7 @@ static inline void process_speaker_rx(audio_server_t *server, audio_device_speak
             memset(my->rx_data_tmp, 0, readlen);
         }
 
-        audio_3a_uplink(my->rx_data_tmp, readlen, server->public_is_rx_mute, 0);
+        audio_3a_uplink(my->rx_data_tmp, readlen, server->public_is_rx_mute, server->is_bt_3a);
     }
     else
     {
@@ -861,9 +931,8 @@ static inline void process_speaker_rx(audio_server_t *server, audio_device_speak
         rt_ringbuffer_put(&client->ring_buf, my->rx_data_tmp, len);
     }
 
-    if (!server->is_need_3a)
+    if (!server->is_bt_3a)
     {
-        //todo: put data to client receive cache buffe?
         audio_server_coming_data_t data;
         data.data = my->rx_data_tmp;
         data.data_len = len;
@@ -889,12 +958,16 @@ static uint8_t pll_add = 1, pll_sub = 1;
 #if ALL_CLK_USING_PLL
 void audio_pll_dynamic_regulation(audio_device_speaker_t *my, uint16_t fifo_size)
 {
-#if SOFTWARE_TX_MIX_ENABLE
     struct rt_ringbuffer *rb = NULL;
+#if SOFTWARE_TX_MIX_ENABLE
+    rb = &my->parent->tx_mixed_rb;
+#else
+    audio_client_t first = device_get_tx_in_running(my->parent, 0);
+    rb = &first->ring_buf;
+#endif
     uint32_t rb_size = 0, rb_used = 0;
     uint8_t threshold_all = 0, threshold_cur = 0;
 
-    rb = my->parent->tx_mixed_rb;
     rb_size = rt_ringbuffer_get_size(rb);
     rb_used = rt_ringbuffer_data_len(rb);
 
@@ -918,7 +991,6 @@ void audio_pll_dynamic_regulation(audio_device_speaker_t *my, uint16_t fifo_size
     }
 
     threshold_last = threshold_cur;
-#endif
 }
 #endif
 
@@ -947,7 +1019,6 @@ void speaker_ring_put(uint8_t *fifo, uint16_t fifo_size)
 
 
 #if ALL_CLK_USING_PLL
-    //multi mic can't using PLL dynamic regulation
     //audio_pll_dynamic_regulation(my, fifo_size);
 #endif
 
@@ -1002,9 +1073,67 @@ void speaker_ring_put(uint8_t *fifo, uint16_t fifo_size)
     }
 }
 
-static void config_tx(audio_device_speaker_t *my)
+#if defined(AUDIO_RX_USING_I2S) || defined(AUDIO_TX_USING_I2S)
+
+static void i2s_config(audio_device_speaker_t *my, bool is_tx)
 {
-#define     mixer_sel  0x5150
+    my->i2s = rt_device_find("i2s2");
+    if (!my->i2s)
+    {
+        LOG_I("i2s not find");
+        RT_ASSERT(0);
+    }
+    if (RT_EOK != rt_device_open(my->i2s, RT_DEVICE_OFLAG_RDWR))
+    {
+        RT_ASSERT(0);
+    }
+
+    struct rt_audio_caps caps =
+    {
+        .main_type = AUDIO_TYPE_INPUT,
+        .sub_type = AUDIO_DSP_PARAM,
+        .udata.config.channels = my->rx_channels,
+        .udata.config.samplefmt = 16,
+        .udata.config.samplerate = my->rx_samplerate,
+    };
+    if (is_tx)
+    {
+        caps.udata.config.channels = my->tx_channels;
+        caps.udata.config.samplerate = my->tx_samplerate;
+    }
+    LOG_I("i2s: samplerate=%d ch=%d", caps.udata.config.samplerate, caps.udata.config.channels);
+    if (RT_EOK != rt_device_control(my->i2s, AUDIO_CTL_CONFIGURE, &caps))
+    {
+        LOG_E("Fail to control i2s fmt");
+    }
+
+    caps.main_type = AUDIO_TYPE_INPUT;
+    caps.sub_type = AUDIO_DSP_MODE;
+    caps.udata.value = 1; //0 master mode, 1 slave mode
+    if (RT_EOK != rt_device_control(my->i2s, AUDIO_CTL_CONFIGURE, &caps))
+    {
+        LOG_E("Fail to control i2s mode");
+    }
+
+    int inter = 0; // 0:dma 1:audprc
+    rt_device_control(my->i2s, AUDIO_CTL_SETINPUT, (void *)inter);
+    inter = 0;
+    rt_device_control(my->i2s, AUDIO_CTL_SETOUTPUT, (void *)inter);
+}
+#endif
+
+static void config_tx(audio_device_speaker_t *my, audio_client_t client)
+{
+#if defined(AUDIO_TX_USING_I2S)
+    i2s_config(my, 1);
+    rt_device_set_tx_complete(my->i2s, speaker_tx_done);
+#else
+    LOG_I("config tx--set callback");
+    rt_device_set_tx_complete(my->audprc_dev, speaker_tx_done);
+
+    rt_device_control(my->audprc_dev, AUDIO_CTL_SET_TX_DMA_SIZE, (void *)my->tx_dma_size);
+
+#define     mixer_sel  0x5050
     struct rt_audio_caps caps;
     struct rt_audio_sr_convert cfg;
     int stream;
@@ -1019,7 +1148,12 @@ static void config_tx(audio_device_speaker_t *my)
     rt_device_control(my->audcodec_dev, AUDIO_CTL_SETOUTPUT, (void *)AUDPRC_TX_TO_CODEC);
 
     caps.main_type = AUDIO_TYPE_OUTPUT;
-    caps.sub_type = 1 << HAL_AUDCODEC_DAC_CH0;
+
+    caps.sub_type = (1 << HAL_AUDCODEC_DAC_CH0);
+#if BSP_ENABLE_DAC2
+    caps.sub_type |= (1 << HAL_AUDCODEC_DAC_CH1);
+#endif
+
     caps.udata.config.channels   = 1; // L,R,L,R,L,R, ......
     caps.udata.config.samplerate = my->tx_samplerate;
     caps.udata.config.samplefmt = 16; //8 16 24 or 32
@@ -1044,7 +1178,7 @@ static void config_tx(audio_device_speaker_t *my)
 
     caps.main_type = AUDIO_TYPE_MIXER;
     caps.sub_type = 0xFF;
-    caps.udata.value   = out_sel;
+    caps.udata.value   = mixer_sel;
     rt_device_control(my->audprc_dev, AUDIO_CTL_CONFIGURE, &caps);
 
     // data source format
@@ -1075,18 +1209,63 @@ static void config_tx(audio_device_speaker_t *my)
     }
     else
     {
-        int volumex2 = eq_get_music_volumex2(PRIVATE_DEFAULT_VOLUME);
+        uint8_t vol_level  = audio_server_get_private_volume(client->audio_type);
+        int volumex2 = eq_get_music_volumex2(vol_level);
         if (my->tx_samplerate == 16000 || my->tx_samplerate == 8000)
-            volumex2 = eq_get_tel_volumex2(PRIVATE_DEFAULT_VOLUME);
+            volumex2 = eq_get_tel_volumex2(vol_level);
 
         LOG_I("no eq init volume=%d", volumex2);
         my->last_volume = MUTE_UNDER_MIN_VOLUME;
         rt_device_control(my->audcodec_dev, AUDIO_CTL_SETVOLUME, (void *)volumex2);
     }
+#endif
 }
 
 static void config_rx(audio_device_speaker_t *my)
 {
+#if defined(AUDIO_RX_USING_PDM)
+    //config PDM
+    LOG_I("config pdm");
+
+    my->pdm = rt_device_find(PDM_DEVICE_NAME);
+    if (my->pdm)
+    {
+        extern int get_pdm_volume();
+
+#if MICBIAS_USING_AS_PDM_POWER
+        micbias_power_on();
+#endif
+
+        rt_device_init(my->pdm);
+        rt_device_open(my->pdm, RT_DEVICE_FLAG_RDONLY);
+        rt_device_set_rx_indicate(my->pdm, mic_rx_ind);
+        struct rt_audio_caps caps;
+        caps.main_type = AUDIO_TYPE_INPUT;
+        caps.sub_type = AUDIO_DSP_PARAM;
+        caps.udata.config.samplefmt = PDM_CHANNEL_DEPTH_16BIT;
+        caps.udata.config.samplerate = PDM_SAMPLE_16KHZ;
+        caps.udata.config.channels = 1; //2
+        rt_device_control(my->pdm, AUDIO_CTL_CONFIGURE, &caps);
+        int val_db = get_pdm_volume();
+        LOG_I("pdm gain=%d * 0.5db", val_db);
+        rt_device_control(my->pdm, AUDIO_CTL_SETVOLUME, (void *)val_db);
+        int stream = AUDIO_STREAM_PDM_PRESTART;
+        LOG_I("pdm rx pre start=0x%x", stream);
+        rt_device_control(my->pdm, AUDIO_CTL_START, &stream);
+        my->need_pdm_rx = 1;
+    }
+    else
+    {
+        RT_ASSERT(0);
+    }
+#elif defined(AUDIO_RX_USING_I2S)
+    i2s_config(my, 0);
+    rt_device_set_rx_indicate(my->i2s, mic_rx_ind);
+    my->need_i2s_rx = 1;
+#else
+    LOG_I("config rx--set callback");
+    rt_device_set_rx_indicate(my->audprc_dev, mic_rx_ind);
+
     //config ADC
     struct rt_audio_caps caps;
     int stream;
@@ -1112,45 +1291,7 @@ static void config_rx(audio_device_speaker_t *my)
           caps.udata.config.samplerate, caps.udata.config.samplefmt);
     rt_device_control(my->audprc_dev, AUDIO_CTL_CONFIGURE, &caps);
     my->need_adc_rx = 1;
-
-#if AUDIO_USING_PDM1
-    //config PDM
-    LOG_I("config pdm");
-    my->pdm = rt_device_find(PDM_DEVICE_NAME);
-    if (my->pdm)
-    {
-        rt_device_init(my->pdm);
-        rt_device_open(my->pdm, RT_DEVICE_FLAG_RDONLY);
-        rt_device_set_rx_indicate(my->pdm, pdm_rx_ind);
-        struct rt_audio_caps caps;
-        caps.main_type = AUDIO_TYPE_INPUT;
-        caps.sub_type = AUDIO_DSP_PARAM;
-        caps.udata.config.samplefmt = PDM_CHANNEL_DEPTH_16BIT;
-        caps.udata.config.samplerate = PDM_SAMPLE_16KHZ;
-        caps.udata.config.channels = 1; //2
-        rt_device_control(my->pdm, AUDIO_CTL_CONFIGURE, &caps);
-        int val_db = get_pdm_volume();
-        LOG_I("pdm gain=%d * 0.5db", val_db);
-        rt_device_control(my->pdm, AUDIO_CTL_SETVOLUME, (void *)val_db);;
-        stream = AUDIO_STREAM_PDM_PRESTART;
-        LOG_I("pdm rx pre start=0x%x", stream);
-        rt_device_control(my->pdm, AUDIO_CTL_START, &stream);
-        my->need_pdm_rx = 1;
-    }
-    else
-    {
-        RT_ASSERT(0);
-    }
 #endif
-
-    //todo: if need audio i2s, open here
-    /*
-     my->i2s = rt_device_find(I2S_DEVICE_NAME);
-
-     ref drv_i2s_audio.c
-     ....
-     my->need_i2s_rx = 1;
-    */
 }
 
 static void start_rx(audio_device_speaker_t *my)
@@ -1174,13 +1315,33 @@ static void start_rx(audio_device_speaker_t *my)
     }
     if (my->need_i2s_rx)
     {
-        //not support i2s now
+        stream = AUDIO_STREAM_RECORD;
+        rt_device_control(my->i2s, AUDIO_CTL_START, &stream);
     }
 }
 
 static void start_txrx(audio_device_speaker_t *my)
 {
     int stream;
+#if defined(AUDIO_RX_USING_PDM)
+    if (my->need_pdm_rx)
+    {
+        my->need_pdm_rx = 0;
+        stream = AUDIO_STREAM_PDM_START;
+        rt_device_control(my->pdm, AUDIO_CTL_START, &stream);
+        my->opened_map_flag |= OPEN_MAP_TX;
+        my->tx_ready = 1;
+    }
+#elif defined(AUDIO_RX_USING_I2S)
+    if (my->need_i2s_rx)
+    {
+        my->need_i2s_rx = 0;
+        stream = AUDIO_STREAM_RECORD;
+        rt_device_control(my->i2s, AUDIO_CTL_START, &stream);
+        my->opened_map_flag |= OPEN_MAP_TX;
+        my->tx_ready = 1;
+    }
+#else
     //6. DAC mute
     rt_device_control(my->audcodec_dev, AUDIO_CTL_MUTE, (void *)1);
 
@@ -1192,13 +1353,12 @@ static void start_txrx(audio_device_speaker_t *my)
     stream = AUDIO_STREAM_REPLAY | ((1 << HAL_AUDCODEC_DAC_CH0) << 8);
     LOG_I("codec START stream=0x%x", stream);
     rt_device_control(my->audcodec_dev, AUDIO_CTL_START, &stream);
-    rt_thread_mdelay(10);
     my->opened_map_flag |= OPEN_MAP_TX;
     my->tx_ready = 1;
     //wait rx start
     LOG_I("wait rx start");
-    rt_event_recv(my->event, 1, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, 1000, NULL) ;
-    LOG_I("got rx start");
+    rt_err_t got = rt_event_recv(my->event, 1, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, 1000, NULL) ;
+    LOG_I("got rx start %d", got);
 #else
     LOG_I("start txrx");
     int stream_audprc, stream_audcodec;
@@ -1213,22 +1373,90 @@ static void start_txrx(audio_device_speaker_t *my)
     }
     rt_device_control(my->audcodec_dev, AUDIO_CTL_START, &stream_audcodec);
     rt_device_control(my->audprc_dev, AUDIO_CTL_START, &stream_audprc);
-
-    if (my->need_pdm_rx)
-    {
-        my->need_pdm_rx = 0;
-        stream = AUDIO_STREAM_PDM_START;
-        rt_device_control(my->pdm, AUDIO_CTL_START, &stream);
-    }
-    if (my->need_i2s_rx)
-    {
-        //not support i2s now
-    }
     rt_hw_interrupt_enable(level);
     rt_thread_mdelay(10);
     my->opened_map_flag |= OPEN_MAP_TX;
     my->tx_ready = 1;
-#endif
+#endif //START_RX_IN_TX_INTERUPT
+#endif //AUDIO_RX_USING_PDM
+}
+
+static rt_err_t micbias_rx_ind(rt_device_t dev, rt_size_t size)
+{
+    rt_kprintf("micbias interrupt\n");
+    return 0;
+}
+
+AUDIO_API void micbias_power_on()
+{
+    int stream;
+    rt_err_t err;
+    audio_server_t *server = get_server();
+    audio_device_speaker_t *my = &server->device_speaker_private;
+    LOG_I("%s 0x%p", __FUNCTION__, my->audcodec_dev);
+    if (!my->audprc_dev)
+    {
+        my->audprc_dev = rt_device_find(AUDIO_SPEAKER_NAME);
+        RT_ASSERT(my->audprc_dev);
+        {
+            err = rt_device_open(my->audprc_dev, RT_DEVICE_FLAG_RDWR);
+            RT_ASSERT(RT_EOK == err);
+        }
+
+        my->audcodec_dev = rt_device_find(AUDIO_PRC_CODEC_NAME);
+        RT_ASSERT(my->audcodec_dev);
+        err = rt_device_open(my->audcodec_dev, RT_DEVICE_FLAG_WRONLY);
+        RT_ASSERT(RT_EOK == err);
+        rt_device_set_rx_indicate(my->audprc_dev, micbias_rx_ind);
+        //config ADC
+        struct rt_audio_caps caps;
+        int stream;
+        rt_device_control(my->audcodec_dev, AUDIO_CTL_SETINPUT, (void *)AUDPRC_RX_FROM_CODEC);
+        caps.main_type = AUDIO_TYPE_INPUT;
+        caps.sub_type = 1 << HAL_AUDCODEC_ADC_CH0;
+        caps.udata.config.channels   = 1;
+        caps.udata.config.samplerate = 8000;
+        caps.udata.config.samplefmt = 16;
+        rt_device_control(my->audcodec_dev, AUDIO_CTL_CONFIGURE, &caps);
+
+        LOG_I("codec input parameter:sub_type=%d channels %d, rate %d, bits %d", caps.sub_type, caps.udata.config.channels,
+              caps.udata.config.samplerate, caps.udata.config.samplefmt);
+
+        rt_device_control(my->audprc_dev, AUDIO_CTL_SETINPUT, (void *)AUDPRC_RX_FROM_CODEC);
+
+        caps.main_type = AUDIO_TYPE_INPUT;
+        caps.sub_type = HAL_AUDPRC_RX_CH0 - HAL_AUDPRC_RX_CH0;
+        caps.udata.config.channels   = 1;
+        caps.udata.config.samplerate = 8000;
+        caps.udata.config.samplefmt = 16;
+        LOG_I("mic input:rx channel %d, channels %d, rate %d, bitwidth %d", 0, caps.udata.config.channels,
+              caps.udata.config.samplerate, caps.udata.config.samplefmt);
+        rt_device_control(my->audprc_dev, AUDIO_CTL_CONFIGURE, &caps);
+        stream = AUDIO_STREAM_RECORD | ((1 << HAL_AUDCODEC_ADC_CH0) << 8);
+        rt_device_control(my->audcodec_dev, AUDIO_CTL_START, &stream);
+        stream = AUDIO_STREAM_RECORD | ((1 << HAL_AUDPRC_RX_CH0) << 8);
+        rt_device_control(my->audprc_dev, AUDIO_CTL_START, &stream);
+        HAL_NVIC_DisableIRQ(AUDPRC_RX0_DMA_IRQ);
+    }
+}
+
+AUDIO_API void micbias_power_off()
+{
+    audio_server_t *server = get_server();
+    audio_device_speaker_t *my = &server->device_speaker_private;
+    int stream_audcodec = AUDIO_STREAM_RECORD | ((1 << HAL_AUDCODEC_ADC_CH0) << 8);
+    int stream_audprc = AUDIO_STREAM_RECORD | ((1 << HAL_AUDPRC_RX_CH0) << 8);
+    LOG_I("%s 0x%p", __FUNCTION__, my->audprc_dev);
+    if (my->audprc_dev)
+    {
+        rt_device_control(my->audcodec_dev, AUDIO_CTL_STOP, &stream_audcodec);
+        rt_device_control(my->audprc_dev, AUDIO_CTL_STOP, &stream_audprc);
+        bf0_disable_pll();
+        rt_device_close(my->audcodec_dev);
+        rt_device_close(my->audprc_dev);
+        my->audcodec_dev = NULL;
+        my->audprc_dev = NULL;
+    }
 }
 
 static int audio_device_speaker_open(void *user_data, audio_device_input_callback callback)
@@ -1273,6 +1501,7 @@ static int audio_device_speaker_open(void *user_data, audio_device_input_callbac
 
     client->is_suspended = 0;
 
+    my->is_need_3a = client->parameter.is_need_3a;
     my->tx_dma_size = TX_DMA_SIZE;
 
     if (client->audio_type == AUDIO_TYPE_BT_MUSIC)
@@ -1289,18 +1518,23 @@ static int audio_device_speaker_open(void *user_data, audio_device_input_callbac
         my->tx_enable      = 1;
         RT_ASSERT(!my->tx_data_tmp);
         // prepare audio 3a
-        if (client->audio_type == AUDIO_TYPE_BT_VOICE)
+        if (client->audio_type == AUDIO_TYPE_BT_VOICE || my->is_need_3a)
         {
+            my->is_need_3a = 1; //audio_open(AUDIO_TYPE_BT_VOICE, ) not set is_need_3a now
             my->tx_dma_size = CODEC_DATA_UNIT_LEN;
             RT_ASSERT(need_rx_init);
-            my->tx_enable = 0;
+            if (client->audio_type == AUDIO_TYPE_BT_VOICE)
+            {
+                my->tx_enable = 0;
+            }
             if (my->tx_samplerate == 0)
             {
                 my->tx_samplerate = 16000;
                 my->rx_samplerate = 16000;
                 LOG_W("warning! no samplerate");
             }
-            audio_3a_open(my->tx_samplerate);
+            audio_3a_open(my->tx_samplerate, (uint8_t)(client->audio_type == AUDIO_TYPE_BT_VOICE));
+            client->is_3a_opened = 1;
         }
 
         my->tx_data_tmp = audio_mem_malloc(my->tx_dma_size);
@@ -1316,7 +1550,7 @@ static int audio_device_speaker_open(void *user_data, audio_device_input_callbac
 
     }
 
-    if (!device->rx_count)
+    if (!device->rx_count && need_tx_init)
         bf0_audprc_eq_enable_offline(get_eq_config(client->audio_type));
 
 #ifdef PKG_USING_AUDIO_TEST_API
@@ -1337,6 +1571,7 @@ static int audio_device_speaker_open(void *user_data, audio_device_input_callbac
           my->rx_samplerate);
 
     //3. open hardware
+#if ((!defined(AUDIO_RX_USING_I2S) && !defined(AUDIO_RX_USING_PDM)) || !defined(AUDIO_TX_USING_I2S))
     if (!my->audprc_dev)
     {
         my->audprc_dev = rt_device_find(AUDIO_SPEAKER_NAME);
@@ -1351,6 +1586,7 @@ static int audio_device_speaker_open(void *user_data, audio_device_input_callbac
         err = rt_device_open(my->audcodec_dev, RT_DEVICE_FLAG_WRONLY);
         RT_ASSERT(RT_EOK == err);
     }
+#endif
 
 #if DEBUG_FRAME_SYNC
     if (!HAL_DBG_DWT_IsInit())
@@ -1361,24 +1597,18 @@ static int audio_device_speaker_open(void *user_data, audio_device_input_callbac
     //4. config TX
     if (need_tx_init)
     {
-        LOG_I("config tx--set callback");
-        rt_device_set_tx_complete(my->audprc_dev, speaker_tx_done);
-
-        rt_device_control(my->audprc_dev, AUDIO_CTL_SET_TX_DMA_SIZE, (void *)my->tx_dma_size);
-
-        config_tx(my);
+        config_tx(my, client);
     }
 
     //5. config RX, will reset audcodec PLL_CFG2, TX can't start before config RX
     if (need_rx_init)
     {
-        LOG_I("config rx--set callback");
-        rt_device_set_rx_indicate(my->audprc_dev, mic_rx_ind);
         config_rx(my);
     }
 
     if (need_tx_init && !need_rx_init) // tx only
     {
+#if !defined(AUDIO_TX_USING_I2S)
         if (my->rx_ref > 0)
         {
             bf0_audprc_stop(); //avoid dac background noise
@@ -1393,6 +1623,7 @@ static int audio_device_speaker_open(void *user_data, audio_device_input_callbac
         LOG_I("codec START stream=0x%x", stream);
         rt_device_control(my->audcodec_dev, AUDIO_CTL_START, &stream);
         rt_thread_mdelay(10);
+#endif
         my->opened_map_flag |= OPEN_MAP_TX;
         my->tx_ready = 1;
     }
@@ -1412,7 +1643,9 @@ static int audio_device_speaker_open(void *user_data, audio_device_input_callbac
     {
         LOG_I("open PA, unmute DAC");
         audio_hardware_pa_start(my->tx_samplerate, 0);
+#if !defined(AUDIO_TX_USING_I2S)
         rt_device_control(my->audcodec_dev, AUDIO_CTL_MUTE, (void *)0);
+#endif
     }
     if (need_rx_init)
     {
@@ -1421,7 +1654,7 @@ static int audio_device_speaker_open(void *user_data, audio_device_input_callbac
     }
     if (client->audio_type == AUDIO_TYPE_BT_VOICE)
     {
-        server->is_need_3a = 1;
+        server->is_bt_3a = 1;
     }
 Exit:
     LOG_I("%s out", __FUNCTION__);
@@ -1481,7 +1714,9 @@ static int audio_device_speaker_close(void *user_data)
         rt_base_t txrx = rt_hw_interrupt_disable();
         my->opened_map_flag  &= ~OPEN_MAP_TXRX;
         rt_hw_interrupt_enable(txrx);
+#if !defined(AUDIO_TX_USING_I2S)
         rt_device_control(my->audcodec_dev, AUDIO_CTL_MUTE, (void *)1);
+#endif
     }
     else if (need_tx_deinit)
     {
@@ -1510,20 +1745,45 @@ static int audio_device_speaker_close(void *user_data)
         goto Exit;
     }
 
-    rt_device_control(my->audcodec_dev, AUDIO_CTL_STOP, &stream_audcodec);
-    rt_device_control(my->audprc_dev, AUDIO_CTL_STOP, &stream_audprc);
+    if (need_tx_deinit || need_rx_deinit)
+    {
+
+        if (my->i2s)
+        {
+            int stream = AUDIO_STREAM_REPLAY;
+            rt_device_control(my->i2s, AUDIO_CTL_STOP, &stream);
+            stream = AUDIO_STREAM_RECORD;
+            rt_device_control(my->i2s, AUDIO_CTL_STOP, &stream);
+        }
+        if (my->pdm)
+        {
+            rt_device_close(my->pdm);
+            my->pdm = NULL;
+#if MICBIAS_USING_AS_PDM_POWER
+            micbias_power_off();
+#endif
+        }
+
+        if (my->audcodec_dev)
+            rt_device_control(my->audcodec_dev, AUDIO_CTL_STOP, &stream_audcodec);
+        if (my->audprc_dev)
+            rt_device_control(my->audprc_dev, AUDIO_CTL_STOP, &stream_audprc);
+    }
 
     if (!my->tx_ref && !my->rx_ref)
     {
         LOG_I("close device & pll");
-        //stream_audcodec = AUDIO_STREAM_RXandTX | ((1 << HAL_AUDCODEC_ADC_CH0) << 8) | ((1 << HAL_AUDCODEC_DAC_CH0) << 8);
-        //stream_audprc = AUDIO_STREAM_RXandTX | ((1 << HAL_AUDPRC_RX_CH0) << 8) | ((1 << HAL_AUDPRC_TX_CH0) << 8);
-        //rt_device_control(my->audcodec_dev, AUDIO_CTL_STOP, &stream_audcodec);
-        //rt_device_control(my->audprc_dev, AUDIO_CTL_STOP, &stream_audprc);
+        if (my->audprc_dev)
+        {
+            //stream_audcodec = AUDIO_STREAM_RXandTX | ((1 << HAL_AUDCODEC_ADC_CH0) << 8) | ((1 << HAL_AUDCODEC_DAC_CH0) << 8);
+            //stream_audprc = AUDIO_STREAM_RXandTX | ((1 << HAL_AUDPRC_RX_CH0) << 8) | ((1 << HAL_AUDPRC_TX_CH0) << 8);
+            //rt_device_control(my->audcodec_dev, AUDIO_CTL_STOP, &stream_audcodec);
+            //rt_device_control(my->audprc_dev, AUDIO_CTL_STOP, &stream_audprc);
 
-        bf0_disable_pll();
-        rt_device_close(my->audcodec_dev);
-        rt_device_close(my->audprc_dev);
+            bf0_disable_pll();
+            rt_device_close(my->audcodec_dev);
+            rt_device_close(my->audprc_dev);
+        }
         my->audcodec_dev = NULL;
         my->audprc_dev = NULL;
 #if START_RX_IN_TX_INTERUPT
@@ -1618,6 +1878,17 @@ static int a2dp_device_input_callback(audio_server_callback_cmt_t cmd, const uin
     return 0;
 }
 
+static int ble_bap_sink_device_input_callback(audio_server_callback_cmt_t cmd, const uint8_t *buffer, uint32_t size)
+{
+    //LOG_I("ble sink cmd=%d", cmd);
+    if (cmd == as_callback_cmd_cache_empty || cmd == as_callback_cmd_cache_half_empty)
+    {
+        rt_event_send(&get_server()->event, AUDIO_SERVER_EVENT_TX_BLE_SINK);
+    }
+    return 0;
+}
+
+
 static int hfp_device_input_callback(audio_server_callback_cmt_t cmd, const uint8_t *buffer, uint32_t size)
 {
     if (cmd == as_callback_cmd_cache_empty || cmd == as_callback_cmd_cache_half_empty)
@@ -1658,9 +1929,18 @@ static int hardware_device_open(audio_device_ctrl_t *device, audio_client_t clie
 #if SOFTWARE_TX_MIX_ENABLE
     if (client->rw_flag & AUDIO_TX)
     {
-        if (!device->tx_mixed_rb)
+        if (!device->tx_mixed_pool)
         {
-            device->tx_mixed_rb = rt_ringbuffer_create(16 * 1024);
+            uint16_t size = TX_DMA_SIZE * 4;
+#if TWS_MIX_ENABLE
+            if (device->device_type == AUDIO_DEVICE_A2DP_SINK)
+            {
+                size = 30000;
+            }
+#endif
+            device->tx_mixed_pool = resample_malloc(size);
+            RT_ASSERT(device->tx_mixed_pool);
+            rt_ringbuffer_init(&device->tx_mixed_rb, device->tx_mixed_pool, size);
         }
     }
 #endif
@@ -1673,6 +1953,7 @@ static int hardware_device_open(audio_device_ctrl_t *device, audio_client_t clie
         if (device->tx_count)
         {
             LOG_I("a2dp share open");
+            ret = 0;
             break;
         }
         current_play_status = 1;
@@ -1696,6 +1977,18 @@ static int hardware_device_open(audio_device_ctrl_t *device, audio_client_t clie
         break;
     case AUDIO_DEVICE_I2S2:
         device->device.open(device->device.user_data, i2s2_device_input_callback);
+        break;
+    case AUDIO_DEVICE_BLE_BAP_SINK:
+        if (device->tx_count)
+        {
+            LOG_I("ble share open");
+            break;
+        }
+        g_ble_bap_sink_parameter.device_user_data = device->device.user_data;
+        g_ble_bap_sink_parameter.tx_sample_rate = client->parameter.write_samplerate;
+        g_ble_bap_sink_parameter.tx_channels = client->parameter.write_channnel_num;
+        g_ble_bap_sink_parameter.p_write_cache = &client->ring_buf;
+        ret = device->device.open(&g_ble_bap_sink_parameter, ble_bap_sink_device_input_callback);
         break;
     default:
         RT_ASSERT(0);
@@ -1755,10 +2048,10 @@ static void hardware_device_close(audio_client_t client)
         }
     }
 #if SOFTWARE_TX_MIX_ENABLE
-    if (device->tx_mixed_rb)
+    if (!device->tx_count && device->tx_mixed_pool)
     {
-        rt_ringbuffer_destroy(device->tx_mixed_rb);
-        device->tx_mixed_rb = NULL;
+        resample_free(device->tx_mixed_pool);
+        device->tx_mixed_pool = NULL;
     }
 #endif
     client->device_using = AUDIO_DEVICE_NONE;
@@ -1800,6 +2093,11 @@ static void device_suspend_one_client(audio_device_ctrl_t *device, audio_client_
     LOG_I("suspend: d=%d h=%x name=%s type=%d prio=%d", device->device_type, c, c->name, c->audio_type, mix_policy[c->audio_type].priority);
     rt_list_insert_before(&get_server()->suspend_client_list, &c->node);
     c->is_suspended = 1;
+    if (c->is_3a_opened)
+    {
+        audio_3a_close();
+        c->is_3a_opened = 0;
+    }
     if (c->callback)
     {
         c->callback(as_callback_cmd_suspended, c->user_data, 0);
@@ -1919,23 +2217,15 @@ static void audio_device_open(audio_server_t *server, audio_client_t client)
     {
         want_device = server->public_device;
     }
-    if (client->device_specified != AUDIO_DEVICE_AUTIO)
+    if (client->device_specified != AUDIO_DEVICE_AUTO)
     {
         want_device = client->device_specified;
     }
     device = &server->devices_ctrl[want_device];
 
-#if SOFTWARE_TX_MIX_ENABLE
-    if (device == AUDIO_DEVICE_A2DP_SINK && client->audio_type != AUDIO_TYPE_LOCAL_MUSIC)
-    {
-        LOG_I("only local music can use tws, using speaker");
-        device = AUDIO_DEVICE_SPEAKER;
-    }
-#endif
-
     if (!device->is_registerd)
     {
-        if (client->device_specified != AUDIO_DEVICE_AUTIO)
+        if (client->device_specified != AUDIO_DEVICE_AUTO)
         {
             LOG_W("device %d not find, using speaker", want_device);
             device = &server->devices_ctrl[AUDIO_DEVICE_SPEAKER];
@@ -2150,6 +2440,11 @@ static void audio_device_close(audio_server_t *server, audio_client_t client)
     {
         LOG_I("resume h=0x%x, n=%s t=%d", suspend1, suspend1->name, suspend1->audio_type);
         rt_list_remove(&suspend1->node);
+        if (suspend1->parameter.is_need_3a)
+        {
+            audio_3a_open(suspend1->parameter.read_bits_per_sample, (uint8_t)(suspend1->audio_type == AUDIO_TYPE_BT_VOICE));
+            suspend1->is_3a_opened = 1;
+        }
         audio_device_open(server, suspend1);
         suspend1->is_suspended = 0;
         if (suspend1->callback && suspend1->magic == AUDIO_CLIENT_MAGIC)
@@ -2203,7 +2498,7 @@ static inline bool change_device(audio_client_t running, audio_device_ctrl_t *de
     LOG_I("device count tx=%d rx=%d busy=%d", dev_old->tx_count, dev_old->rx_count, dev_old->is_busy);
 
     if ((running->device_using == dev_new->device_type)
-            || (running->device_specified != AUDIO_DEVICE_AUTIO)
+            || (running->device_specified != AUDIO_DEVICE_AUTO)
             || ((running->rw_flag & AUDIO_TXRX) == AUDIO_RX))
     {
         LOG_I("no need change");
@@ -2272,8 +2567,6 @@ static inline bool change_device(audio_client_t running, audio_device_ctrl_t *de
     rt_list_insert_before(&dev_new->running_client_list, &running->node);
     rt_hw_interrupt_enable(hw);
 
-    audio_device_clean_cache(running); //avoid noise, may different samplerate data in cache
-
     if (!dev_new->is_busy)
     {
         dev_new->rx_samplerate = running->parameter.read_samplerate;
@@ -2281,6 +2574,7 @@ static inline bool change_device(audio_client_t running, audio_device_ctrl_t *de
         dev_new->tx_mix_dst_samplerate = running->parameter.write_samplerate;
     }
     hardware_device_open(dev_new, running);
+    audio_device_clean_cache(running); //avoid noise, may different samplerate data in cache
 
     device_print_current_client(dev_new);
     LOG_I("%s out", __FUNCTION__);
@@ -2322,14 +2616,14 @@ static void audio_device_change(audio_server_t *server)
 
 bool audio_device_is_a2dp_sink()
 {
-#if SOFTWARE_TX_MIX_ENABLE
+#if (SOFTWARE_TX_MIX_ENABLE && TWS_MIX_ENABLE)
+    return false; //resampe when audio write, upper layer should not resample
+#endif
 
-#else
     if (g_server.devices_ctrl[AUDIO_DEVICE_A2DP_SINK].is_busy)
     {
         return true;
     }
-#endif
     return false;
 }
 
@@ -2405,8 +2699,14 @@ inline static void audio_client_stop(audio_client_t client)
         rt_uint32_t evt;
         rt_event_send(&server->down_event, AUDIO_SERVER_EVENT_DOWN_END);
         rt_event_recv(&server->event, AUDIO_SERVER_EVENT_DOWN_END, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &evt) ;
-        server->is_need_3a = 0;
+        server->is_bt_3a = 0;
         audio_3a_close();
+        client->is_3a_opened = 0;
+    }
+    else if (client->is_3a_opened)
+    {
+        audio_3a_close();
+        client->is_3a_opened = 0;
     }
 
     if (is_in_list(&server->suspend_client_list, &client->node))
@@ -2426,6 +2726,14 @@ inline static void audio_client_stop(audio_client_t client)
     audio_mem_free(client->ring_pool);
     client->magic = 0;
     rt_event_send(client->api_event, 1);
+#if SOFTWARE_TX_MIX_ENABLE
+    if (client->resample)
+    {
+        sifli_resample_close(client->resample);
+        client->resample = NULL;
+    }
+
+#endif
     audio_mem_free(client);
 
 Exit:
@@ -2436,7 +2744,7 @@ Exit:
     if (audio_type == AUDIO_TYPE_BT_VOICE)
     {
         HAL_HPAON_CANCEL_LP_ACTIVE_REQUEST();
-        LOG_I("audio release lcpu, 3a=%d", server->is_need_3a);
+        LOG_I("audio release lcpu, 3a=%d", server->is_bt_3a);
     }
 
     if (audio_pm_debug == 0)
@@ -2634,13 +2942,13 @@ AUDIO_API int audio_hfp_uplink_write(audio_client_t handle, uint8_t *data, uint3
     if (!handle || handle->magic != AUDIO_CLIENT_MAGIC || !data || !data_len)
     {
 
-        LOG_I("audio_write invalid parameter");
+        LOG_I("hfp_write invalid parameter");
         return -2;
 
     }
     if (handle->is_suspended)
     {
-        LOG_D("audio_write is suspend %d", handle->audio_type);
+        LOG_D("hfp_write is suspend %d", handle->audio_type);
         return -1;
     }
 
@@ -2663,11 +2971,283 @@ static inline bool has_device_busy(audio_server_t *server)
     }
     return false;
 }
+
+static inline void client_debug_full(audio_client_t c)
+{
+    c->debug_full++;
+    if (/*handle->debug_full == 1 ||*/ (c->debug_full & 0x7f) == 0)
+    {
+        LOG_I("audio_write: ring buf full %d times", c->debug_full);
+    }
+}
+
+#if SOFTWARE_TX_MIX_ENABLE
+
+static void client_callback_to_user(audio_client_t c)
+{
+    if (c && c->callback)
+    {
+        struct rt_ringbuffer *rb = &c->ring_buf;
+        if (rt_ringbuffer_space_len(rb) < TX_DMA_SIZE)
+        {
+            c->callback(as_callback_cmd_cache_empty, c->user_data, 0);
+        }
+        else if (rt_ringbuffer_space_len(rb) >= rt_ringbuffer_get_size(rb) / 2)
+        {
+            c->callback(as_callback_cmd_cache_half_empty, c->user_data, 0);
+        }
+    }
+}
+
+static inline void mono2stereo(int16_t *mono, uint32_t samples, int16_t *stereo)
+{
+    for (int i = 0; i < samples; i++)
+    {
+        *stereo++ = *mono;
+        *stereo++ = *mono++;
+    }
+}
+static inline void stereo2mono(int16_t *stereo, uint32_t samples, int16_t *mono)
+{
+    for (int i = 0; i < samples / 2; i++)
+    {
+        *mono++ = *stereo++;
+        stereo++;
+    }
+}
+
+static int audio_write_resample(audio_client_t c,        uint8_t *data, uint32_t data_len)
+{
+    audio_server_t *server = get_server();
+    uint32_t out_bytes;
+    audio_device_e d_type;
+    d_type = c->device_using;
+    if (!(d_type >= AUDIO_DEVICE_SPEAKER && d_type < AUDIO_DEVICE_NUMBER))
+    {
+        return 0;
+    }
+    uint32_t src_len = data_len;
+
+    audio_device_ctrl_t *d = &server->devices_ctrl[d_type];
+
+    if (c->parameter.write_samplerate == d->tx_mix_dst_samplerate
+            && c->parameter.write_channnel_num == d->tx_mix_dst_channel)
+    {
+        if (rt_ringbuffer_space_len(&c->ring_buf) < data_len)
+        {
+            client_debug_full(c);
+            return 0;
+        }
+        c->debug_full = 0;
+        rt_ringbuffer_put(&c->ring_buf, data, data_len);
+        return data_len;
+    }
+
+    if (c->resample_dst_samplerate != d->tx_mix_dst_samplerate
+            || c->resample_dst_ch != d->tx_mix_dst_channel)
+    {
+        LOG_I("c=%p d_r=%d to %d ch %d to %d", c, c->resample_dst_samplerate, d->tx_mix_dst_samplerate, c->resample_dst_ch, d->tx_mix_dst_channel);
+        c->resample_dst_samplerate = d->tx_mix_dst_samplerate;
+        c->resample_dst_ch = d->tx_mix_dst_channel;
+        if (c->resample)
+        {
+            sifli_resample_close(c->resample);
+        }
+        c->resample = sifli_resample_open(c->resample_dst_ch, c->parameter.write_samplerate, c->resample_dst_samplerate);
+        RT_ASSERT(c->resample);
+    }
+
+    uint8_t dst_ch = c->resample_dst_ch;
+    uint8_t ch =  c->parameter.write_channnel_num;
+    uint32_t new_size =  data_len * c->resample->ratio;
+
+    if (ch == 1 && dst_ch == 2)
+    {
+        new_size = new_size * 2 + 16;
+        if (rt_ringbuffer_space_len(&c->ring_buf) < new_size)
+        {
+            client_debug_full(c);
+            return 0;
+        }
+
+        for (int i = 0; i < src_len / TX_DMA_SIZE; i++)
+        {
+            mono2stereo((int16_t *)data, TX_DMA_SIZE / 2, &c->resample_dst[0]);
+            out_bytes = sifli_resample_process(c->resample, c->resample_dst, TX_DMA_SIZE * 2, 0);
+            rt_ringbuffer_put(&c->ring_buf, (uint8_t *)c->resample->dst, out_bytes);
+            data_len -= TX_DMA_SIZE;
+            data += TX_DMA_SIZE;
+        }
+        if (data_len > 0)
+        {
+            RT_ASSERT(data_len < TX_DMA_SIZE);
+            mono2stereo((int16_t *)data, data_len / 2, &c->resample_dst[0]);
+            out_bytes = sifli_resample_process(c->resample, c->resample_dst, data_len * 2, 0);
+            rt_ringbuffer_put(&c->ring_buf, (uint8_t *)c->resample->dst, out_bytes);
+        }
+    }
+    else if (ch == 2 && dst_ch == 1)
+    {
+        new_size = (new_size >> 1) + 16;
+        if (rt_ringbuffer_space_len(&c->ring_buf) < new_size)
+        {
+            client_debug_full(c);
+            return 0;
+        }
+
+        for (int i = 0; i < src_len / TX_DMA_SIZE; i++)
+        {
+            stereo2mono((int16_t *)data, TX_DMA_SIZE / 2, &c->resample_dst[0]);
+            out_bytes = sifli_resample_process(c->resample, c->resample_dst, TX_DMA_SIZE / 2, 0);
+            rt_ringbuffer_put(&c->ring_buf, (uint8_t *)c->resample->dst, out_bytes);
+            data_len -= TX_DMA_SIZE;
+            data += TX_DMA_SIZE;
+        }
+        if (data_len > 0)
+        {
+            stereo2mono((int16_t *)data, data_len / 2, &c->resample_dst[0]);
+            out_bytes = sifli_resample_process(c->resample, c->resample_dst, data_len / 2, 0);
+            rt_ringbuffer_put(&c->ring_buf, (uint8_t *)c->resample->dst, out_bytes);
+        }
+    }
+    else
+    {
+        new_size += 16;
+        if (rt_ringbuffer_space_len(&c->ring_buf) < new_size)
+        {
+            client_debug_full(c);
+            return 0;
+        }
+
+        for (int i = 0; i < data_len / TX_DMA_SIZE; i++)
+        {
+            out_bytes = sifli_resample_process(c->resample, (int16_t *)data, TX_DMA_SIZE, 0);
+            rt_ringbuffer_put(&c->ring_buf, (uint8_t *)c->resample->dst, out_bytes);
+            data_len -= TX_DMA_SIZE;
+            data += TX_DMA_SIZE;
+        }
+        if (data_len > 0)
+        {
+            out_bytes = sifli_resample_process(c->resample, (int16_t *)data, data_len, 0);
+            rt_ringbuffer_put(&c->ring_buf, (uint8_t *)c->resample->dst, out_bytes);
+        }
+    }
+    return src_len;
+}
+
+static void client_mix_process(audio_client_t c1, audio_client_t c2, audio_device_ctrl_t *d)
+{
+    uint8_t ch;
+    uint8_t ch_dst;
+    uint16_t len1 = 0, len2 = 0;
+    struct rt_ringbuffer *p_mix_rb = &d->tx_mixed_rb;
+
+    int16_t m1[TX_DMA_SIZE / 2];
+    int16_t m2[TX_DMA_SIZE / 2];
+
+    // 1. mix it
+    if (c1 && c2)
+    {
+        len1 = rt_ringbuffer_data_len(&c1->ring_buf);
+        len2 = rt_ringbuffer_data_len(&c2->ring_buf);
+        memset(m1, 0, sizeof(m1));
+        memset(m2, 0, sizeof(m2));
+        if (len1 >= TX_DMA_SIZE && len2 >= TX_DMA_SIZE)
+        {
+            rt_ringbuffer_get(&c1->ring_buf, (rt_uint8_t *)m1, TX_DMA_SIZE);
+            rt_ringbuffer_get(&c2->ring_buf, (rt_uint8_t *)m2, TX_DMA_SIZE);
+
+            //tws stream average, can use other mix algorithm
+            for (int i = 0; i < TX_DMA_SIZE / 2; i++)
+            {
+                m1[i] = (m1[i] >> 1) + (m2[i] >> 1);
+            }
+
+            rt_ringbuffer_put(p_mix_rb, (rt_uint8_t *)m1, TX_DMA_SIZE);
+        }
+        else if (len1 < TX_DMA_SIZE && len2 < TX_DMA_SIZE)
+        {
+            //LOG_I("mix all empty");
+        }
+        else if (len1 < TX_DMA_SIZE)
+        {
+            //LOG_I("mix empty c=0x%p t=%d n=%s", c1, c1->audio_type, c1->name);
+            rt_ringbuffer_get(&c2->ring_buf, (rt_uint8_t *)m2, TX_DMA_SIZE);
+            rt_ringbuffer_put(p_mix_rb, (rt_uint8_t *)m2, TX_DMA_SIZE);
+        }
+        else
+        {
+            //LOG_I("mix empty c=0x%p t=%d n=%s", c2, c2->audio_type, c2->name);
+            rt_ringbuffer_get(&c1->ring_buf, (rt_uint8_t *)m1, TX_DMA_SIZE);
+            rt_ringbuffer_put(p_mix_rb, (rt_uint8_t *)m1, TX_DMA_SIZE);
+        }
+    }
+    else if (c1)
+    {
+        len1 = rt_ringbuffer_data_len(&c1->ring_buf);
+        if (len1 >= TX_DMA_SIZE)
+        {
+            rt_ringbuffer_get(&c1->ring_buf, (rt_uint8_t *)m1, TX_DMA_SIZE);
+            rt_ringbuffer_put(p_mix_rb, (rt_uint8_t *)m1, TX_DMA_SIZE);
+        }
+    }
+
+    if (rt_ringbuffer_space_len(p_mix_rb) >= rt_ringbuffer_get_size(p_mix_rb) / 2
+            && (rt_ringbuffer_data_len(&c1->ring_buf) >= TX_DMA_SIZE || rt_ringbuffer_data_len(&c2->ring_buf) >= TX_DMA_SIZE)
+            && (len1 >= 3 * TX_DMA_SIZE || len2 >= 3 * TX_DMA_SIZE))
+    {
+        //continue do mix
+        audio_server_t *server = get_server();
+        if (d->device_type == AUDIO_DEVICE_A2DP_SINK)
+            rt_event_send(&server->event, AUDIO_SERVER_EVENT_TX_A2DP_SINK);
+        else
+            rt_event_send(&server->event, AUDIO_SERVER_EVENT_TX_HALF_EMPTY);
+    }
+
+    client_callback_to_user(c1);
+    client_callback_to_user(c2);
+}
+#endif
+
+static void avrcp_process(audio_client_t c1, audio_client_t c2, rt_uint32_t evt)
+{
+    audio_client_t first = c1;
+    if (c2 && c1)
+    {
+        if (c2->audio_type == AUDIO_TYPE_LOCAL_MUSIC && c1->audio_type != AUDIO_TYPE_LOCAL_MUSIC)
+        {
+            first = c2;
+        }
+    }
+
+    if (first && first->callback)
+    {
+        if (evt & AUDIO_SERVER_EVENT_A2DP_NEXT)
+        {
+            first->callback(as_callback_cmd_play_to_next, first->user_data, 0);
+        }
+
+        if (evt & AUDIO_SERVER_EVENT_A2DP_PREV)
+        {
+            first->callback(as_callback_cmd_play_to_prev, first->user_data, 0);
+        }
+        if (evt & AUDIO_SERVER_EVENT_A2DP_RESUME)
+        {
+            first->callback(as_callback_cmd_play_resume, first->user_data, 0);
+        }
+        if (evt & AUDIO_SERVER_EVENT_A2DP_PAUSE)
+        {
+            first->callback(as_callback_cmd_play_pause, first->user_data, 0);
+        }
+    }
+}
+
 void audio_server_entry()
 {
     rt_uint32_t  evt;
     audio_device_ctrl_t *speaker;
     audio_device_ctrl_t *a2dp_sink;
+    audio_device_ctrl_t *ble_bap_sink;
     audio_device_ctrl_t *hfp;
     audio_client_t first, second;
     audio_server_t *server = get_server();
@@ -2675,6 +3255,8 @@ void audio_server_entry()
     speaker = &server->devices_ctrl[AUDIO_DEVICE_SPEAKER];
     a2dp_sink = &server->devices_ctrl[AUDIO_DEVICE_A2DP_SINK];
     hfp = &server->devices_ctrl[AUDIO_DEVICE_HFP];
+    ble_bap_sink = &server->devices_ctrl[AUDIO_DEVICE_BLE_BAP_SINK];
+
     while (1)
     {
 
@@ -2682,7 +3264,7 @@ void audio_server_entry()
         //using rt_mb_recv() ?
         if (rt_event_recv(&server->event, AUDIO_SERVER_EVENT_ALL, RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR, RT_WAITING_FOREVER, &evt) == RT_EOK)
         {
-            LOG_D("evt=0x%x", evt);
+            //LOG_I("evt=0x%x", evt);
 
             if (evt & AUDIO_SERVER_EVENT_CMD)
             {
@@ -2697,29 +3279,22 @@ void audio_server_entry()
                 continue;
             }
 
-            if ((evt & AUDIO_SERVER_EVENT_TX_HALF_EMPTY) && speaker->tx_count)
+            if ((evt & (AUDIO_SERVER_EVENT_TX_HALF_EMPTY | AUDIO_SERVER_EVENT_TX_FULL_EMPTY))
+                    && speaker->tx_count)
             {
                 first = device_get_tx_in_running(speaker, 0);
 #if SOFTWARE_TX_MIX_ENABLE
                 second = device_get_tx_in_running(speaker, 1);
-                //todo mix two client
-                RT_ASSERT(0);
+                client_mix_process(first, second, speaker);
 #else
+                audio_server_callback_cmt_t cmd = as_callback_cmd_cache_empty;
+                if (evt & AUDIO_SERVER_EVENT_TX_FULL_EMPTY)
+                {
+                    cmd = as_callback_cmd_cache_half_empty;
+                }
+
                 if (first && first->callback)
                     first->callback(as_callback_cmd_cache_half_empty, first->user_data, 0);
-#endif
-            }
-            if ((evt & AUDIO_SERVER_EVENT_TX_FULL_EMPTY) && speaker->tx_count)
-            {
-#if SOFTWARE_TX_MIX_ENABLE
-                first = device_get_tx_in_running(speaker, 0);
-                second = device_get_tx_in_running(speaker, 1);
-                //todo mix two client
-                RT_ASSERT(0);
-#else
-                first = device_get_tx_in_running(speaker, 0);
-                if (first && first->callback)
-                    first->callback(as_callback_cmd_cache_empty, first->user_data, 0);
 #endif
             }
             if ((evt & AUDIO_SERVER_EVENT_RX) && speaker->rx_count)
@@ -2729,6 +3304,20 @@ void audio_server_entry()
             if (a2dp_sink->device.output
                     && a2dp_sink->is_busy)
             {
+#if (SOFTWARE_TX_MIX_ENABLE && TWS_MIX_ENABLE)
+                first = device_get_tx_in_running(a2dp_sink, 0);
+                second = device_get_tx_in_running(a2dp_sink, 1);
+                if (first)
+                {
+                    if (a2dp_sink_need_trigger)
+                    {
+                        a2dp_sink->device.output(a2dp_sink->device.user_data, &a2dp_sink->tx_mixed_rb);
+                        a2dp_sink_need_trigger = 0;
+                    }
+                    client_mix_process(first, second, a2dp_sink);
+                }
+                avrcp_process(first, second, evt);
+#else
                 first = device_get_tx_in_running(a2dp_sink, 0);
                 if (evt & AUDIO_SERVER_EVENT_TX_A2DP_SINK)
                 {
@@ -2743,27 +3332,21 @@ void audio_server_entry()
                             first->callback(as_callback_cmd_cache_half_empty, first->user_data, 0);
                     }
                 }
+                avrcp_process(first, NULL, evt);
+#endif
+            }
+
+            if ((evt & AUDIO_SERVER_EVENT_TX_BLE_SINK)
+                    && ble_bap_sink->device.output
+                    && ble_bap_sink->is_busy)
+            {
+                first = device_get_tx_in_running(ble_bap_sink, 0);
                 if (first && first->callback)
                 {
-                    if (evt & AUDIO_SERVER_EVENT_A2DP_NEXT)
-                    {
-                        first->callback(as_callback_cmd_play_to_next, first->user_data, 0);
-                    }
-
-                    if (evt & AUDIO_SERVER_EVENT_A2DP_PREV)
-                    {
-                        first->callback(as_callback_cmd_play_to_prev, first->user_data, 0);
-                    }
-                    if (evt & AUDIO_SERVER_EVENT_A2DP_RESUME)
-                    {
-                        first->callback(as_callback_cmd_play_resume, first->user_data, 0);
-                    }
-                    if (evt & AUDIO_SERVER_EVENT_A2DP_PAUSE)
-                    {
-                        first->callback(as_callback_cmd_play_pause, first->user_data, 0);
-                    }
+                    first->callback(as_callback_cmd_cache_half_empty, first->user_data, 0);
                 }
             }
+
             if ((evt & AUDIO_SERVER_EVENT_BT_DOWNLINK) && hfp->tx_count && hfp->is_busy)
             {
                 bt_voice_downlink_process(1);
@@ -2804,7 +3387,7 @@ void audio_btdownlink_entry()
                 audio_tick_in(AUDIO_DNLINK_TIME);
                 bt_voice_uplink_send();
 
-                bt_voice_downlink_process(server->is_need_3a);
+                bt_voice_downlink_process(server->is_bt_3a);
                 audio_tick_out(AUDIO_DNLINK_TIME);
                 audio_dnlink_time_print();
             }
@@ -2884,7 +3467,7 @@ static audio_client_t audio_client_init(audio_type_t audio_type, audio_rwflag_t 
     RT_ASSERT(parameter);
     LOG_I("audio_open type=%d d=%d rw=%d tx cache=%d rx cache=%d", audio_type, device, rwflag, parameter->write_cache_size, parameter->read_cache_size);
 
-    RT_ASSERT(audio_type < AUDIO_TYPE_NUMBER)
+    RT_ASSERT(audio_type < AUDIO_TYPE_NUMBER);
     audio_client_t handle = audio_mem_calloc(1, sizeof(struct audio_client_base_t));
     RT_ASSERT(handle);
     handle->device_specified = device;
@@ -2896,10 +3479,25 @@ static audio_client_t audio_client_init(audio_type_t audio_type, audio_rwflag_t 
     {
         tx_ring_size = SPEAKER_TX_BUF_SIZE;
     }
+    else
+    {
+#if SOFTWARE_TX_MIX_ENABLE
+        uint32_t resampled_ring_size;
+        float size = (float)tx_ring_size * 96000.0f / handle->parameter.write_samplerate + 2048;
+        resampled_ring_size = (uint32_t)size ;
+        if (resampled_ring_size > 32000)
+        {
+            resampled_ring_size = 32000;
+        }
+        tx_ring_size = resampled_ring_size;
+        LOG_I("audio resamped cache size=%d", tx_ring_size);
+#endif
+    }
     if (tx_ring_size < TX_DMA_SIZE * 2 + RT_ALIGN_SIZE)
     {
         tx_ring_size = TX_DMA_SIZE * 2 + RT_ALIGN_SIZE;
     }
+
     handle->magic       = AUDIO_CLIENT_MAGIC;
     handle->callback    = callback;
     handle->user_data   = callback_userdata;
@@ -2968,17 +3566,17 @@ static audio_client_t audio_client_init(audio_type_t audio_type, audio_rwflag_t 
 
 AUDIO_API audio_client_t audio_open(audio_type_t audio_type, audio_rwflag_t rwflag, audio_parameter_t *parameter, audio_server_callback_func callback, void *callback_userdata)
 {
-    audio_device_e device = AUDIO_DEVICE_AUTIO;
+    audio_device_e device = AUDIO_DEVICE_AUTO;
     if ((audio_type != AUDIO_TYPE_BT_VOICE) && ((rwflag & AUDIO_TXRX) == AUDIO_RX))
     {
         //auto record device only support mic device, pmd record should use audio_open2()
         device = AUDIO_DEVICE_SPEAKER;
         LOG_I("switch to mic record");
     }
-    if (audio_type == AUDIO_TYPE_BT_VOICE)
+    if (audio_type == AUDIO_TYPE_BT_VOICE || parameter->is_need_3a)
     {
         device = AUDIO_DEVICE_SPEAKER;
-        LOG_I("bt voice always use speaker");
+        LOG_I("3a voice always use speaker");
     }
 
     return audio_client_init(audio_type, rwflag, parameter, callback, callback_userdata, device);
@@ -3021,17 +3619,27 @@ AUDIO_API int audio_write(audio_client_t handle, uint8_t *data, uint32_t data_le
         return -1;
     }
 
+#if SOFTWARE_TX_MIX_ENABLE
+#if !TWS_MIX_ENABLE
+    if (handle->device_using == AUDIO_DEVICE_A2DP_SINK)
+    {
+        goto put_raw;
+    }
+#endif
+    int ret = audio_write_resample(handle, data, data_len);
+    if (ret > 0)
+    {
+        handle->debug_full = 0;
+    }
+    return ret;
+#endif
 
+put_raw:
     if (rt_ringbuffer_space_len(&handle->ring_buf) < data_len)
     {
-        handle->debug_full++;
-        if (/*handle->debug_full == 1 ||*/ (handle->debug_full & 0x7f) == 0)
-        {
-            LOG_I("audio_write: ring buf full %d times", handle->debug_full);
-        }
+        client_debug_full(handle);
         return 0;
     }
-
     handle->debug_full = 0;
     len = rt_ringbuffer_put(&handle->ring_buf, data, data_len);
     return data_len;
@@ -3083,14 +3691,17 @@ AUDIO_API int audio_ioctl(audio_client_t handle, int cmd, void *parameter)
     }
     else if (cmd == 2)
     {
+#if !SOFTWARE_TX_MIX_ENABLE
         ret = -1;
         if (handle->is_fade_vol && handle->is_fade_end)
         {
             ret = 0;
         }
+#endif
     }
     else if (cmd == -1)
     {
+#if !SOFTWARE_TX_MIX_ENABLE
         lock();
         if (!handle->is_suspended)
         {
@@ -3100,6 +3711,7 @@ AUDIO_API int audio_ioctl(audio_client_t handle, int cmd, void *parameter)
             g_server.last_tick = rt_tick_get_millisecond();
         }
         unlock();
+#endif
     }
     LOG_I("audio_ioctl: cmd=%d ret=%d", cmd, ret);
     return ret;
@@ -3293,6 +3905,11 @@ uint8_t audio_server_get_public_mic_mute(void)
     return g_server.public_is_rx_mute;
 }
 
+uint8_t audio_server_get_max_volume(void)
+{
+    return AUDIO_MAX_VOLUME;
+}
+
 uint8_t a2dp_set_speaker_volume(uint8_t volume)
 {
     uint8_t new_vol;
@@ -3390,11 +4007,11 @@ void set_speaker_volume(uint8_t volume)
     LOG_I("set speaker volume: %d-->%d\n", volume, new_vol);
     g_server.private_volume[AUDIO_TYPE_BT_VOICE] = new_vol;
 }
-int audio_server_register_audio_device(audio_device_e device_type, struct audio_device *p_audio_device)
+int audio_server_register_audio_device(audio_device_e device_type, const struct audio_device *p_audio_device)
 {
     audio_device_ctrl_t *dev;
     RT_ASSERT(g_server.is_server_inited && p_audio_device);
-    RT_ASSERT(device_type  >= 0 && device_type < AUDIO_DEVICE_NUMBER)
+    RT_ASSERT(device_type  >= 0 && device_type < AUDIO_DEVICE_NUMBER);
     dev = &g_server.devices_ctrl[device_type];
 
     RT_ASSERT(dev->is_registerd == 0);
@@ -3551,7 +4168,11 @@ static void audio_data_save_buf(uint8_t type, uint8_t *buf, uint32_t size)
     audio_data_t *pingpong = audio_data_get_buf(false);
     if (!pingpong) return;
     if (audio_dump_log) rt_kprintf("%s: type %d pos %d %d %d\n", __func__, type, audio_dump_pos, audio_dump_pos + size + AUDIO_DATA_HEADER_LEN, audio_dump_len);
-    RT_ASSERT(audio_dump_pos + size + AUDIO_DATA_HEADER_LEN <= audio_dump_len && size == AUDIO_DATA_LEN);
+    RT_ASSERT(size == AUDIO_DATA_LEN);
+    if (audio_dump_pos + size + AUDIO_DATA_HEADER_LEN > audio_dump_len)
+    {
+        return;
+    }
     audio_data_t *p = (audio_data_t *)(((uint8_t *) pingpong) + audio_dump_pos);
     p->type = type;
     p->len = size;

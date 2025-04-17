@@ -117,9 +117,10 @@ int media_audio_len(AVFrame *frame)
     return (frame->nb_samples * frame->channels * sizeof(uint16_t));
 }
 
-int media_audio_get(AVFrame *frame, uint16_t *audio_data)
+int media_audio_get(AVFrame *frame, uint16_t *audio_data, uint32_t audio_data_size)
 {
-    int r = frame->nb_samples * frame->channels * sizeof(uint16_t);
+    int size = frame->nb_samples * frame->channels * sizeof(uint16_t);
+    RT_ASSERT(size <= audio_data_size);
 
     if (audio_data)
     {
@@ -189,7 +190,7 @@ int media_audio_get(AVFrame *frame, uint16_t *audio_data)
             LOG_E("unknow audio fmt\n");
         }
     }
-    return r;
+    return size;
 }
 
 int ezip_video_cache_init(ffmpeg_handle thiz)

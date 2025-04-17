@@ -560,6 +560,8 @@ FT_CONST FLASH_RDID_TYPE_T flash_cmd_id_pool_typ4[] =
 FT_CONST FLASH_RDID_TYPE_T flash_cmd_id_pool_typ5[] =
 {
     {0xc2, 0x25, 0x39, 0, 0x2000000},   //MX25U25643G_RDID
+    {0xc2, 0x25, 0x37, 0, 0x800000},    //MX25U6432F_RDID
+    {0xc2, 0x20, 0x19, 1, 0x2000000},   //MX25L25645G
     {0x25, 0x70, 0x18, 0, 0x1000000},   //SK25LP128_RDID
     {FLASH_INVALID_ID, 0, 0, 0, 0},      //last one
 };

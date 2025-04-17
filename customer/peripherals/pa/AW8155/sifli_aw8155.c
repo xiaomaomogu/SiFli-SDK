@@ -63,6 +63,9 @@
 #elif defined(BSP_USING_BOARD_EM_LB567XXX) || defined(BSP_USING_BOARD_EM_LB566XXX)
 #define  AW8155_GPIO_PIN    18
 #define  AW8155_GPIO_HWP    hwp_gpio2
+#elif defined(BSP_USING_BOARD_56_DEVKIT_LCD_NAND)
+#define  AW8155_GPIO_PIN    20
+#define  AW8155_GPIO_HWP    hwp_gpio2
 #elif defined(SOC_SF32LB52X)
 #define  AW8155_GPIO_PIN    10
 #define  AW8155_GPIO_HWP    hwp_gpio1

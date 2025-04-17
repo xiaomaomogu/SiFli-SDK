@@ -20,6 +20,7 @@ except:
      
 src=['bf0_pin_const.c']
 src += ['Templates/system_bf0_ap.c']
+src += ['lcpu_config_type.c']
 if GetDepend('SOC_SF32LB55X') and GetDepend(['BF0_HCPU']):
     if not GetDepend('BSP_CHIP_ID_COMPATIBLE'):
         if GetConfigValue('BSP_LB55X_CHIP_ID') >= 3:
@@ -30,6 +31,7 @@ if GetDepend('SOC_SF32LB55X') and GetDepend(['BF0_HCPU']):
         src += Glob('lcpu_a3_patch.c')
         src += Glob('lcpu_patch.c')
     src += Glob('ble_rf_fulcal.c')
+    src += Glob('bf0_lcpu_init.c')
 
 ASFLAGS = ''
 

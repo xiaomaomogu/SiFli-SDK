@@ -337,14 +337,15 @@ audio_dump_ctrl_t audio_dump_debug[ADUMP_NUM];
 */
 static const audio_mix_policy_t mix_policy[AUDIO_TYPE_NUMBER] =
 {
-    [AUDIO_TYPE_BT_VOICE]      = {94, BT_VOICE_MIX_WITH},
+    [AUDIO_TYPE_BT_VOICE]      = {99, BT_VOICE_MIX_WITH},
     [AUDIO_TYPE_BT_MUSIC]      = {11, BT_MUSIC_MIX_WITH},
     [AUDIO_TYPE_ALARM]         = {88, ALARM_MIX_WITH},
     [AUDIO_TYPE_NOTIFY]        = {80, NOTIFY_MIX_WITH},
     [AUDIO_TYPE_LOCAL_MUSIC]   = {10, LOCAL_MUSIC_MIX_WITH},
     [AUDIO_TYPE_LOCAL_RING]    = {92, LOCAL_RING_MIX_WITH},
     [AUDIO_TYPE_LOCAL_RECORD]  = {93, 0},
-    [AUDIO_TYPE_MODEM_VOICE]   = {94, 0},
+    [AUDIO_TYPE_TEL_RING]      = {94, 0},
+    [AUDIO_TYPE_MODEM_VOICE]   = {99, 0},
 };
 
 uint8_t g_3mics_log;
@@ -946,7 +947,7 @@ static int audio_device_speaker_open(void *user_data, audio_device_input_callbac
             my->rx_samplerate = 16000;
             LOG_W("warning! no samplerate");
         }
-        audio_3a_open(my->tx_samplerate);
+        audio_3a_open(my->tx_samplerate, 1);
     }
     else if (client->audio_type == AUDIO_TYPE_BT_MUSIC)
     {

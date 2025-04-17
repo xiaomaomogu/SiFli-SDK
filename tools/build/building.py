@@ -170,9 +170,9 @@ def ImgFileBuilder(target, source, env):
     SIFLI_SDK = os.getenv('SIFLI_SDK')
     EZIP_PATH = os.path.join(SIFLI_SDK, "tools/png2ezip/ezip.exe")
     filename = os.path.basename("{}".format(target[0]))
+    logging.info('ImgFileBuilder= '+env['FLAGS'])
     if ".gif" in str(source[0]):
-        conv_option = '-gif'
-        subprocess.call([EZIP_PATH, '-gif', str(source[0]), '-section', env['SECTION_NAME']])
+        subprocess.call(EZIP_PATH+' -gif '+str(source[0])+ ' ' + env['FLAGS'], shell=True)
         logging.info("gif")
         target_filename = os.path.basename("{}".format(target[0]))
         source_path = os.path.dirname("{}".format(source[0]))
@@ -180,13 +180,8 @@ def ImgFileBuilder(target, source, env):
         logging.info(source_path)
         shutil.move(os.path.join(source_path, target_filename), '{}'.format(target[0]))
     else:
-        conv_option = '-convert'
-        if env['IS_SIMU']:
-            subprocess.call([EZIP_PATH, '-convert', str(source[0]), env['COLOR_FMT'], '-cfile', env['FILE_FMT'], '-section', env['SECTION_NAME'], '-simu'])
-            shutil.move('output/t4_{}_r4_f0/{}'.format(env['COLOR_FMT'][1:], filename), '{}'.format(target[0]))
-        else:
-            subprocess.call([EZIP_PATH, '-convert', str(source[0]), env['COLOR_FMT'], '-cfile', env['FILE_FMT'], '-dpt', '1', '-section', env['SECTION_NAME']])
-            shutil.move('output/t1_{}_f0/{}'.format(env['COLOR_FMT'][1:], filename), '{}'.format(target[0]))
+        subprocess.call(EZIP_PATH + ' -convert ' + str(source[0]) + ' ' + env['FLAGS'] + ' -outdir img_tmp', shell=True)
+        shutil.move('img_tmp/{}'.format(filename), '{}'.format(target[0]))
 
 def FontFileBuild(target, source, env):
     SIFLI_SDK = os.getenv('SIFLI_SDK')
@@ -204,10 +199,10 @@ def ModifyFontTargets(target, source, env):
             
     return target, source
 
-def ImgResource(env, source, color_fmt, file_fmt, section_name, is_simu=False):
+def ImgResource(env, source, flags):
     target = []
     for s in source:
-        t = env.ImgFile(s, COLOR_FMT = color_fmt, FILE_FMT = file_fmt, SECTION_NAME = section_name, IS_SIMU=is_simu)
+        t = env.ImgFile(s, FLAGS = flags)
         target.extend(t)
     
     return target
@@ -452,8 +447,14 @@ def EmbeddedImgCFileBuild(target, source, env):
     s = str(source[0])
     if os.path.isdir(s):
         s = os.path.join(s, 'ER_IROM1.bin')
-    subprocess.call(['python', GEN_SRC_PATH, 'lcpu', s, target_path])
-    shutil.move(os.path.join(target_path, 'lcpu_img.c'), str(target[0]))
+    if "acpu" in s:
+        subprocess.call(['python', GEN_SRC_PATH, 'general', s, target_path, "acpu"])
+        shutil.move(os.path.join(target_path, 'acpu_img.c'), str(target[0]))
+    else:
+        subprocess.call(['python', GEN_SRC_PATH, 'lcpu', s, target_path])
+        shutil.move(os.path.join(target_path, 'lcpu_img.c'), str(target[0]))
+
+
 
 def FtabCFileBuild(target, source, env):
     import resource
@@ -489,7 +490,11 @@ def GetCustomImgList():
 
 def GenDownloadScript(main_env):
     import resource
+    import rtconfig
     
+    if rtconfig.ARCH=='sim':
+        return
+
     PrintEnvList()
 
     dependent_files = []
@@ -801,13 +806,31 @@ def IsEmbeddedProjEnv(env=None):
     else:
         return False
 
-def PrepareBuilding(env, has_libcpu=False, remove_components = []):
+def PrepareBuilding(env, has_libcpu=False, remove_components=[], buildlib=None):
     import rtconfig
 
     global BuildOptions
     global Projects
     global Env
     global Rtt_Root
+
+    if env is None:
+        if rtconfig.ARCH != "sim":
+            env = Environment(tools = ['mingw'],
+                AS = rtconfig.AS, ASFLAGS = rtconfig.AFLAGS,
+                CC = rtconfig.CC, CFLAGS = rtconfig.CFLAGS,
+                CXX = rtconfig.CXX, CXXFLAGS = rtconfig.CXXFLAGS,
+                AR = rtconfig.AR, ARFLAGS = '-rc',
+                LINK = rtconfig.LINK, LINKFLAGS = rtconfig.LFLAGS)
+            env.PrependENVPath('PATH', rtconfig.EXEC_PATH)
+        else:
+            env = Environment(TARGET_ARCH='x86',
+                AS = rtconfig.AS, ASFLAGS = rtconfig.AFLAGS,
+                CC = rtconfig.CC, CFLAGS = rtconfig.CFLAGS,
+                CXX = rtconfig.CXX, CXXFLAGS = rtconfig.CXXFLAGS,
+                AR = rtconfig.AR, ARFLAGS = '',
+                LINK = rtconfig.LINK, LINKFLAGS = rtconfig.LFLAGS)
+            env.PrependENVPath('PATH', 'X:/bin/Hostx64/x64/')
     
     if 'name' not in env:
         env['name'] = 'main'
@@ -912,6 +935,7 @@ def PrepareBuilding(env, has_libcpu=False, remove_components = []):
         AddOption('--buildlib',
                           dest = 'buildlib',
                           type = 'string',
+                          default=buildlib,
                           help = 'building library of a component')
         AddOption('--cleanlib',
                           dest = 'cleanlib',
@@ -1452,6 +1476,9 @@ def InitBuild(bsp_root, build_dir, board):
                          os.path.join(build_dir, "kconfiglist")] + conf_list)
     assert retcode == 0, "Fail to generate .config and rtconfig.h"
 
+    if os.path.isfile('rtconfig_project.h'):
+        shutil.copy('rtconfig_project.h', os.path.join(build_dir, "rtconfig_project.h"))
+
     src = GetCustomMemMapSrc(bsp_root, build_dir, rtconfig.CHIP, board)
     if src:
         logging.debug("Copy custom_mem_map.h")
@@ -1745,7 +1772,7 @@ def PreBuilding():
     for a in PREBUILDING:
         a()
 
-def GroupLibName(name, env):
+def GroupLibName(name, env=None):
     import rtconfig
     if rtconfig.PLATFORM == 'armcc':
         return name + '_rvds'
@@ -1757,7 +1784,10 @@ def GroupLibName(name, env):
     return name
 
 def GroupLibFullName(name, env):
-    return env['LIBPREFIX'] + GroupLibName(name, env) + env['LIBSUFFIX']
+    s = GroupLibName(name, env)
+    if not s.startswith(env['LIBPREFIX']):
+        s = env['LIBPREFIX'] + s
+    return s + env['LIBSUFFIX']
 
 def BuildLibInstallAction(target, source, env):
     import rtconfig
@@ -1766,7 +1796,8 @@ def BuildLibInstallAction(target, source, env):
         if Group['name'] == lib_name:
             lib_name = GroupLibFullName(Group['name'], env)
             dst_name = os.path.join(Group['path'], lib_name)
-            logging.info ('Copy '+lib_name+' => ' +dst_name)
+            lib_name = os.path.join(os.path.dirname(str(source[0])), lib_name)
+            logging.info ('Copy '+lib_name+' => ' + dst_name)
             do_copy_file(lib_name, dst_name)
             try:
                 os.system(rtconfig.POST_ACTION)
@@ -1817,6 +1848,7 @@ def DoBuilding(target, objects):
                 if not local_group(Group, objects):
                     objects = Env.Object(Group['src'])
 
+                lib_name = os.path.join(os.path.dirname(target), lib_name)
                 program = Env.Library(lib_name, objects)
 
                 # add library copy action
@@ -2108,6 +2140,7 @@ def SifliMsvcEnv(cpu):
     rtconfig.TARGET_EXT = 'exe'
     rtconfig.AS = rtconfig.PREFIX + 'cl'
     rtconfig.CC = rtconfig.PREFIX + 'cl'
+    rtconfig.CXX = rtconfig.PREFIX + 'cl'
     rtconfig.AR = rtconfig.PREFIX + 'lib'
     rtconfig.LINK = rtconfig.PREFIX + 'link'
        
@@ -2125,12 +2158,20 @@ def SifliMsvcEnv(cpu):
     
     rtconfig.CFLAGS += ' /Zi /Od /W 3 /WL /D_Win32 /wd4828 /FS /utf-8 /nologo '        
     rtconfig.LFLAGS += ' /SUBSYSTEM:CONSOLE /MACHINE:X86 /INCREMENTAL:NO /nologo '
-    rtconfig.LFLAGS += '/PDB:"build\\rtthread.pdb" /DEBUG /ignore:4099 '
+    rtconfig.LFLAGS += '/PDB:"{}\\{}.pdb" /DEBUG /ignore:4099 '.format(rtconfig.OUTPUT_DIR, rtconfig.TARGET_NAME)
+
+    rtconfig.CXXFLAGS = rtconfig.CFLAGS
 
     rtconfig.CPATH = ''
     rtconfig.LPATH = ''
 
     rtconfig.POST_ACTION = ''   
+
+    rtconfig.CFLAGS += ' /IX:\\include /IY:\\ucrt /IY:\\um /IY:\\shared '
+    rtconfig.LFLAGS += ' /LIBPATH:L:\\ucrt\\x86  /LIBPATH:L:\\um\\x86 /LIBPATH:X:\\lib\\x86 user32.lib '    
+    rtconfig.EXEC_PATH = 'X:/bin/Hostx64/x86/'
+
+    os.system(os.path.join(os.getenv('SIFLI_SDK'), "msvc_setup.bat"))
 
 def SifliIarEnv(cpu):
     import rtconfig
@@ -2364,6 +2405,7 @@ def SifliKeilEnv(cpu, BSP_ROOT=''):
     rtconfig.AFLAGS += ' --diag_suppress=A1609 '
 
     rtconfig.CXXFLAGS = rtconfig.CFLAGS + ' -xc++ -std=c++14 -fno-exceptions ' 
+    rtconfig.CXXFLAGS += ' -I' + rtconfig.EXEC_PATH + '/ARM/ARMCLANG/include/libcxx'
     rtconfig.CCFLAGS =  rtconfig.CFLAGS
     rtconfig.CFLAGS = rtconfig.CFLAGS + ' -xc -std=c99 '
     rtconfig.LFLAGS = ' --cpu=' + asm_cpu 
@@ -2528,7 +2570,7 @@ def IsInitBuild():
         return False    
 
 
-def PrepareEnv():
+def PrepareEnv(board=None):
     import rtconfig
     global BuildOptions
 
@@ -2536,6 +2578,7 @@ def PrepareEnv():
         AddOption('--board',
                     dest = 'board',
                     type = 'string',
+                    default=board,
                     help = 'board name')            
         AddOption('--bconf',
                     dest = 'bconf',

@@ -121,11 +121,23 @@ static void lcpu_ble_patch_install()
 {
     uint8_t rev_id = __HAL_SYSCFG_GET_REVID();
     if (rev_id < HAL_CHIP_REV_ID_A4)
+    {
+#if !defined(SF32LB52X_REV_B)
         lcpu_patch_install();
+#else // SF32LB52X_REV_B
+        HAL_ASSERT(0 && "Wrongly config");
+#endif // !SF32LB52X_REV_B
+
+    }
     else
     {
+#if !defined(SF32LB52X_REV_A)
         memset((void *)0x20400000, 0, 0x500);
         lcpu_patch_install_rev_b();
+#else // SF32LB52X_REV_A
+        HAL_ASSERT(0 && "Wrongly config");
+#endif // !SF32LB52X_REV_A
+
     }
 
     if (g_lcpu_rf_cal_disable == 0)

@@ -136,3 +136,15 @@ const LV_ATTRIBUTE_MEM_ALIGN uint8_t png_filename_map[] = {
 ...
 ```
 
+### 生成可供硬件EZIP解压的GZIP BIN文件
+- 例如对同目录下的file.bin进行压缩，使用如下命令
+```
+-gzip file.bin -length -noheader
+```
+制作后会在工具目录下生成文件_file.bin.gz_
+该文件的前4字节是原始数据的长度，当进行硬件ezip解压（详见example/hal/ezip使用gzip解压）时，不需要传入到输入参数中，解压时可以根据该长度分配输出buffer。
+4字节长度后面的都是gzip压缩数据，即直接作为硬件ezip的输入部分。
+
+运行一次gzip得到的压缩数据，解压时必须完整传入硬件ezip的输入参数。所以当有比较大的数据需要解压时，输入输出buffer申请的空间可能不够。
+建议先对数据进行分块，例如按10K拆分原始文件，分块后的数据，每一块单独压缩，解压时依次解压还原数据。
+

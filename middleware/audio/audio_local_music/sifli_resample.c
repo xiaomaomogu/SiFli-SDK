@@ -4,6 +4,18 @@
 #include <audio_mem.h>
 #include "sifli_resample.h"
 
+void *resample_malloc(uint32_t size)
+{
+    return audio_mem_malloc(size);
+}
+void resample_free(void *p)
+{
+    if (p)
+    {
+        audio_mem_free(p);
+    }
+}
+
 sifli_resample_t *sifli_resample_open(uint8_t channels, uint32_t src_samplerate, uint32_t dst_samplerate)
 {
     sifli_resample_t *p = (sifli_resample_t *)audio_mem_malloc(sizeof(sifli_resample_t));
