@@ -53,10 +53,10 @@ pipeline {
                         '''
                     }
                 }
-                stage('ec-lb587_v11 watchdemo') {
+                stage('ec-lb587 watch') {
                     steps {
                         bat'''
-                        tools\\autotest\\build.bat example\\watch_demo\\project\\ec-lb587_v11
+                        tools\\autotest\\build.bat example\\multimedia\\lvgl\\watch\\project --board ec-lb587
                         '''
                     }
                 }
@@ -81,20 +81,20 @@ pipeline {
                         '''
                     }
                 } 
-                stage('ec-lb563_bsp') {
-                    steps {
-                        bat'''
-                        tools\\autotest\\build.bat test\\drivers\\project\\ec-lb563\\hcpu
-                        '''
-                    }
-                }
-                stage('ec-lb583_bsp') {
-                    steps {
-                        bat'''
-                        tools\\autotest\\build.bat test\\drivers\\project\\ec-lb58xxxxxx001\\v11_583
-                        '''
-                    }
-                }
+                // stage('ec-lb563_bsp') {
+                //     steps {
+                //         bat'''
+                //         tools\\autotest\\build.bat test\\drivers\\project\\ec-lb563\\hcpu
+                //         '''
+                //     }
+                // }
+                // stage('ec-lb583_bsp') {
+                //     steps {
+                //         bat'''
+                //         tools\\autotest\\build.bat test\\drivers\\project\\ec-lb58xxxxxx001\\v11_583
+                //         '''
+                //     }
+                // }
                 //stage('52x_fpga_v3_nor') {
                 //    steps {
                 //        bat'''

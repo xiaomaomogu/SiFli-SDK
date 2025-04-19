@@ -5,6 +5,10 @@ REM echo on
 
 set SIFLI_SDK=%cd%
 
+set ORG_PATH=%PATH%
+set ENV_ROOT=D:\Tools\env_1.1.2
+echo %ORG_PATH%
+
 set TOOLS_ROOT=%cd%/tools
 
 set RTT_EXEC_PATH=C:\GNU MCU Eclipse\ARM Embedded GCC\8.2.1-1.2-20190119-1237\bin
