@@ -185,7 +185,7 @@ def ImgFileBuilder(target, source, env):
 
 def FontFileBuild(target, source, env):
     SIFLI_SDK = os.getenv('SIFLI_SDK')
-    FONT2C_PATH = os.path.join(SIFLI_SDK, "tools/font2c/font2c.exe")
+    FONT2C_PATH = os.path.join(SIFLI_SDK, f"tools/font2c/font2c{env['tool_suffix']}")
     filename = os.path.basename("{}".format(target[0]))
     subprocess.call([FONT2C_PATH, str(source[0])])
     shutil.move(filename, '{}'.format(target[0]))
@@ -808,6 +808,7 @@ def IsEmbeddedProjEnv(env=None):
 
 def PrepareBuilding(env, has_libcpu=False, remove_components=[], buildlib=None):
     import rtconfig
+    import platform
 
     global BuildOptions
     global Projects
@@ -841,6 +842,18 @@ def PrepareBuilding(env, has_libcpu=False, remove_components=[], buildlib=None):
         env['JLINK_DEVICE'] = rtconfig.JLINK_DEVICE
     if hasattr(rtconfig, 'LINK_SCRIPT_SRC'):
         env['LINK_SCRIPT_SRC'] = rtconfig.LINK_SCRIPT_SRC
+
+    platform_name = platform.system()
+    if platform_name == 'Windows':
+        tool_suffix = '.exe'
+    elif platform_name == 'Linux': 
+        tool_suffix = '_linux'
+    elif platform_name == 'Darwin':
+        tool_suffix = '_mac'
+    else:
+        raise ValueError('Unsupported platform: {}'.format(platform_name))
+
+    env['tool_suffix'] = tool_suffix
 
     # Clear projects for new project
     Projects = []
