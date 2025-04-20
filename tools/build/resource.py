@@ -97,7 +97,7 @@ const lv_i18n_lang_t {}_lang =
 }};
 '''
     data = u''
-    for k, v in s.iteritems():
+    for k, v in s.items():
         # k = "str_" + k
         # data = data + u'char *{} = "{}";\n'.format(k,v)
         # key and singular
@@ -201,7 +201,7 @@ def GenerateStrRes(str_src_dir, str_output_dir):
     lang_pack = set()
     for f_name in string_res_file:
         try:
-            f = open(f_name)
+            f = open(f_name, encoding='utf-8')
             s = json.load(f)
         finally:
             f.close()
