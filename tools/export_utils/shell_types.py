@@ -34,9 +34,9 @@ class Shell():
         self.new_sifli_sdk_env = new_sifli_sdk_env
 
         try:
-            self.tmp_dir_path = Path(gettempdir()) / ('esp_idf_activate_' + getpass.getuser())
+            self.tmp_dir_path = Path(gettempdir()) / ('sifli_sdk_activate_' + getpass.getuser())
         except Exception as e:
-            self.tmp_dir_path = Path(gettempdir()) / 'esp_idf_activate'
+            self.tmp_dir_path = Path(gettempdir()) / 'sifli_sdk_activate'
             warn(f'Failed to get username with error: {e}. Using default temporary directory {self.tmp_dir_path}.')
 
         if not conf.ARGS.debug and os.path.exists(self.tmp_dir_path):
