@@ -954,8 +954,8 @@ def BuildJLinkLoadScript(main_env):
                     hex_path = os.path.join(hex_file, d)
                     s += MakeLine('loadfile {}'.format(os.path.relpath(hex_path, work_dir)))
                     download_file.append({
-                        'name': os.path.relpath(bin_path, work_dir),
-                        'addr': info[d]
+                        'name': os.path.relpath(hex_path, work_dir),
+                        'addr': 0xFFFFFFFF
                     })
                     s_file += MakeLine('FILE{}={}'.format(s_num,os.path.relpath(hex_path, work_dir)))
                     s_file += MakeLine('ADDR{}=0x{:08X}'.format(s_num,0XFFFFFFFF))
@@ -963,8 +963,8 @@ def BuildJLinkLoadScript(main_env):
             elif not building.IsEmbeddedProjEnv(env):
                 s += MakeLine('loadfile {}'.format(os.path.relpath(hex_file, work_dir)))
                 download_file.append({
-                        'name': os.path.relpath(bin_path, work_dir),
-                        'addr': info[d]
+                        'name': os.path.relpath(hex_path, work_dir),
+                        'addr': 0xFFFFFFFF
                     })
                 s_file += MakeLine('FILE{}={}'.format(s_num,os.path.relpath(hex_file, work_dir)))
                 s_file += MakeLine('ADDR{}=0x{:08X}'.format(s_num,0XFFFFFFFF))
@@ -1000,7 +1000,7 @@ def BuildJLinkLoadScript(main_env):
                 assert os.path.isfile(bin_file), "{} should be a file as map defines".format(bin_file)
                 s += MakeLine('loadbin {} 0x{:08X}'.format(os.path.relpath(bin_file, work_dir), info))
                 download_file.append({
-                        'name': os.path.relpath(bin_path, work_dir),
+                        'name': os.path.relpath(bin_file, work_dir),
                         'addr': info
                     })
                 s_file += MakeLine('FILE{}={}'.format(s_num,os.path.relpath(bin_file, work_dir)))
@@ -1024,7 +1024,7 @@ def BuildJLinkLoadScript(main_env):
                     hex_path = os.path.join(hex_file, d)
                     s += MakeLine('loadfile {}'.format(os.path.relpath(hex_path, work_dir)))
                     download_file.append({
-                        'name': os.path.relpath(bin_path, work_dir),
+                        'name': os.path.relpath(hex_path, work_dir),
                         'addr': 0XFFFFFFFF
                     })
                     s_file += MakeLine('FILE{}={}'.format(s_num,os.path.relpath(hex_path, work_dir)))
@@ -1033,7 +1033,7 @@ def BuildJLinkLoadScript(main_env):
             elif not building.IsEmbeddedProjEnv(env):
                 s += MakeLine('loadfile {}'.format(os.path.relpath(hex_file, work_dir)))
                 download_file.append({
-                        'name': os.path.relpath(bin_path, work_dir),
+                        'name': os.path.relpath(hex_file, work_dir),
                         'addr': 0XFFFFFFFF
                     })
                 s_file += MakeLine('FILE{}={}'.format(s_num,os.path.relpath(hex_file, work_dir)))

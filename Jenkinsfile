@@ -77,7 +77,7 @@ pipeline {
                 stage('common eh-lb551 ble') {
                     steps {
                         bat'''
-                        tools\\autotest\\build.bat example\\ble\\central_and_peripheral\\project\\common --board eh-lb551_hcpu
+                        tools\\autotest\\build.bat example\\ble\\central_and_peripheral\\project\\hcpu --board eh-lb551_hcpu
                         '''
                     }
                 } 

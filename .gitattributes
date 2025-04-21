@@ -12,4 +12,5 @@
 
 # Custom settings for specific files
 *.sh eol=lf
-*.men eol=crlf  # e.g. t32.men
+# e.g. t32.men
+*.men eol=crlf
