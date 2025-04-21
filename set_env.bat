@@ -3,14 +3,14 @@
 @echo off
 set SIFLI_SDK=%~dp0
 
-if "%ORG_PATH%"=="" (
+if not defined ORG_PATH (
     echo Please upgrate env to v1.1.2 or greater
     goto :END 
 )
 
 REM Use keil by default
 set RTT_CC=keil
-if "%REG_KEIL_PATH%" NEQ "" (
+if defined REG_KEIL_PATH (
     set RTT_EXEC_PATH=%REG_KEIL_PATH%
 ) else (
     set RTT_EXEC_PATH=C:/Keil_v5
@@ -31,10 +31,10 @@ set RTT_CC=gcc
 REM @if "%REG_GCC_PATH%"=="" goto :PRINT_GCC_PATH_ERROR
 REM @set RTT_EXEC_PATH=%REG_GCC_PATH%
 
-if "%REG_GCC_PATH%" NEQ "" (
+if defined REG_GCC_PATH (
     set RTT_EXEC_PATH=%REG_GCC_PATH%
 ) else (
-    if "%RTT_GCC_EXEC_PATH%" NEQ "" (
+    if defined RTT_GCC_EXEC_PATH (
         set RTT_EXEC_PATH=%RTT_GCC_EXEC_PATH%
     ) else (
         set RTT_EXEC_PATH=%ENV_ROOT%\tools\gnu_gcc\arm_gcc\bin
@@ -45,7 +45,7 @@ goto :CHECK
 :SET_IAR
 set RTT_CC=iar
 REM replace with your IAR install path
-if "%REG_IAR_PATH%" NEQ "" (
+if defined REG_IAR_PATH (
     set RTT_EXEC_PATH=%REG_IAR_PATH%
 ) else (
     set RTT_EXEC_PATH=C:/PROGRA~2/IARSYS~1/EMBEDD~1.2
