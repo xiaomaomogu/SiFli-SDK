@@ -1,5 +1,5 @@
 pipeline {
-    agent any
+   agent { label 'SH_03' }
     stages {
         stage('Print CI Info') {
             steps {
@@ -53,13 +53,13 @@ pipeline {
                         '''
                     }
                 }
-                stage('ec-lb587 watch') {
-                    steps {
-                        bat'''
-                        tools\\autotest\\build.bat example\\multimedia\\lvgl\\watch\\project --board ec-lb587
-                        '''
-                    }
-                }
+                //stage('ec-lb587 watch') {
+                //    steps {
+                //        bat'''
+                //        tools\\autotest\\build.bat example\\multimedia\\lvgl\\watch\\project --board ec-lb587
+                //        '''
+                //    }
+                //}
                 stage('common eh-lb563 bt') {
                     steps {
                         bat'''

@@ -6,7 +6,7 @@ REM echo on
 set SIFLI_SDK=%cd%
 
 set ORG_PATH=%PATH%
-set ENV_ROOT=D:\Tools\env_1.1.2
+set ENV_ROOT=C:\SiFli_Env
 echo %ORG_PATH%
 
 set TOOLS_ROOT=%cd%/tools
