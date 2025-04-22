@@ -235,7 +235,9 @@ void dfu_protocol_reset_entry(void *param)
             HAL_Delay(200);
             dfu_protocol_advertising_start();
             /* Enable serial transmission service. */
+#ifdef BSP_BLE_SERIAL_TRANSMISSION
             ble_serial_tran_init();
+#endif
             LOG_I("receive BLE power on!\r\n");
         }
     }
@@ -380,7 +382,7 @@ int8_t dfu_protocol_packet_send(uint8_t *data)
 {
     if (!data)
         return -1;
-#ifdef BLUETOOTH
+#if defined (BLUETOOTH) && defined(BSP_BLE_SERIAL_TRANSMISSION)
     dfu_protocol_port_env_t *env = dfu_protocol_get_env();
     ble_serial_tran_data_t t_data;
     dfu_tran_protocol_t *msg = dfu_packet2msg(data);
@@ -457,7 +459,7 @@ static void ble_dfu_serial_callback(uint8_t event, uint8_t *data)
 #endif
 
 // For dual core.
-#if defined(BSP_BLE_SIBLES)
+#if defined(BSP_BLE_SIBLES) && defined(BSP_BLE_SERIAL_TRANSMISSION)
 BLE_SERIAL_TRAN_EXPORT(BLE_DFU_CATEID, ble_dfu_serial_callback);
 #elif defined(BSP_USING_DATA_SVC)
 

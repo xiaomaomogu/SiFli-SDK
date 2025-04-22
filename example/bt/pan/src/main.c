@@ -67,6 +67,10 @@ void HAL_MspInit(void)
 #include "ble_connection_manager.h"
 #include "bt_connection_manager.h"
 
+#ifdef OTA_55X
+    #include "dfu_service.h"
+#endif
+
 #include "ulog.h"
 
 
@@ -74,6 +78,8 @@ void HAL_MspInit(void)
 
 #define BT_APP_CONNECT_PAN  1
 #define PAN_TIMER_MS        3000
+
+#define URL "http://113.204.105.154:19000/ota-file/sdk/offline_install_h.bin"
 
 typedef struct
 {
@@ -281,6 +287,10 @@ static void pan_cmd(int argc, char **argv)
     // only valid after connection setup but phone didn't enable pernal hop
     else if (strcmp(argv[1], "conn_pan") == 0)
         bt_app_connect_pan_timeout_handle(NULL);
+    else if (strcmp(argv[1], "ota_pan") == 0)
+    {
+        bt_dfu_pan_download(URL);
+    }
 }
 MSH_CMD_EXPORT(pan_cmd, Connect PAN to last paired device);
 
