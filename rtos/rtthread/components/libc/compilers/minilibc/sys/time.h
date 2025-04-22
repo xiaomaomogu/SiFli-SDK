@@ -32,7 +32,7 @@ struct timeval
 /*
  * Structure defined by POSIX.1b to be like a timeval.
  */
-#if !defined(_TIME_SPEC_DECLARED)
+#if !defined(_TIME_SPEC_DECLARED) && (!defined(__GNUC__) || (__GNUC__ <= 8))
 #define _TIME_SPEC_DECLARED
 struct timespec
 {
