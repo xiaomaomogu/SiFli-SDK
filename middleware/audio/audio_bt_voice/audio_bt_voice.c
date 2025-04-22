@@ -820,9 +820,9 @@ int bt_voice_init(void)
 
     q_cfg.qid = SYS_HL_BT_AUDIO_QUEUE;
     q_cfg.tx_buf_size = 0;
-    q_cfg.tx_buf_addr = NULL;
-    q_cfg.tx_buf_addr_alias = NULL;
-    q_cfg.rx_buf_addr = NULL;
+    q_cfg.tx_buf_addr = (uint32_t)NULL;
+    q_cfg.tx_buf_addr_alias = (uint32_t)NULL;
+    q_cfg.rx_buf_addr = (uint32_t)NULL;
     q_cfg.rx_ind = _hl_bt_audio_queue_rx_ind;
     q_cfg.user_data = 0;
     g_msbc_fifo = (uint8_t *)audio_mem_malloc(AUDIO_MSBC_BUFFER_LEN);

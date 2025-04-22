@@ -636,9 +636,9 @@ __ROM_USED int sys_init_lh_bt_audio_queue(void)
 
     q_cfg.qid = SYS_LH_BT_AUDIO_QUEUE;
     q_cfg.tx_buf_size = 0;
-    q_cfg.tx_buf_addr = NULL;
-    q_cfg.tx_buf_addr_alias = NULL;
-    q_cfg.rx_buf_addr = NULL;
+    q_cfg.tx_buf_addr = (uint32_t)NULL;
+    q_cfg.tx_buf_addr_alias = (uint32_t)NULL;
+    q_cfg.rx_buf_addr = (uint32_t)NULL;
     q_cfg.rx_ind = lh_bt_audio_queue_rx_ind;
     q_cfg.user_data = 0;
 
