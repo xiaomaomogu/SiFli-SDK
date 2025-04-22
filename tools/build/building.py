@@ -172,7 +172,7 @@ def ImgFileBuilder(target, source, env):
     filename = os.path.basename("{}".format(target[0]))
     logging.info('ImgFileBuilder= '+env['FLAGS'])
     if ".gif" in str(source[0]):
-        subprocess.call(EZIP_PATH+' -gif '+str(source[0])+ ' ' + env['FLAGS'], shell=True)
+        subprocess.run(EZIP_PATH+' -gif '+str(source[0])+ ' ' + env['FLAGS'], shell=True, check=True)
         logging.info("gif")
         target_filename = os.path.basename("{}".format(target[0]))
         source_path = os.path.dirname("{}".format(source[0]))
@@ -180,14 +180,14 @@ def ImgFileBuilder(target, source, env):
         logging.info(source_path)
         shutil.move(os.path.join(source_path, target_filename), '{}'.format(target[0]))
     else:
-        subprocess.call(EZIP_PATH + ' -convert ' + str(source[0]) + ' ' + env['FLAGS'] + ' -outdir img_tmp', shell=True)
+        subprocess.run(EZIP_PATH + ' -convert ' + str(source[0]) + ' ' + env['FLAGS'] + ' -outdir img_tmp', shell=True, check=True)
         shutil.move('img_tmp/{}'.format(filename), '{}'.format(target[0]))
 
 def FontFileBuild(target, source, env):
     SIFLI_SDK = os.getenv('SIFLI_SDK')
     FONT2C_PATH = os.path.join(SIFLI_SDK, f"tools/font2c/font2c{env['tool_suffix']}")
     filename = os.path.basename("{}".format(target[0]))
-    subprocess.call([FONT2C_PATH, str(source[0])])
+    subprocess.run([FONT2C_PATH, str(source[0])], check=True)
     shutil.move(filename, '{}'.format(target[0]))
 
 def ModifyFontTargets(target, source, env):
@@ -292,42 +292,42 @@ def ProgramBinaryBuild(target, source, env):
         shutil.rmtree(bin_path)
     # TODO: only support keil and gcc
     if rtconfig.PLATFORM == 'armcc':
-        subprocess.call(['fromelf', '--bin', str(source[0]), '--output', bin_path])
+        subprocess.run(['fromelf', '--bin', str(source[0]), '--output', bin_path], check=True)
         if os.path.isdir(bin_path):
             # delete the folder to clean old files
             shutil.rmtree(bin_path)
-            subprocess.call(['fromelf', '--bin', str(source[0]), '--output', bin_path])        
+            subprocess.run(['fromelf', '--bin', str(source[0]), '--output', bin_path], check=True)        
             dir_list = os.listdir(bin_path)
             for d in dir_list:
                 if '.bin' not in d:
                     shutil.move(os.path.join(bin_path, d), os.path.join(bin_path, d + '.bin'))
         # print Object/Image Component Sizes
-        subprocess.call(['fromelf', '-z', str(source[0])])
+        subprocess.run(['fromelf', '-z', str(source[0])], check=True)
     elif rtconfig.PLATFORM == 'gcc':
         shutil.copy(str(source[0]),str(source[0])+'.strip.elf')
-        subprocess.call([rtconfig.STRIP, str(source[0])+'.strip.elf'])
+        subprocess.run([rtconfig.STRIP, str(source[0])+'.strip.elf'], check=True)
         # check whether there're multiple binary
         ex_imgs = []
         tempfile_path = os.path.join(target_path, 'rom_temp.bin')
         for i in range(2, 2 + MAX_EX_IMG_NUM):
-            subprocess.call([rtconfig.OBJCPY, '-Obinary', '-j.rom{}'.format(i), str(source[0]), tempfile_path])
+            subprocess.run([rtconfig.OBJCPY, '-Obinary', '-j.rom{}'.format(i), str(source[0]), tempfile_path], check=True)
             size = os.path.getsize(tempfile_path)
             os.remove(tempfile_path)
             if size > 0:
                 ex_imgs.append(i)
 
         if len(ex_imgs) == 0:
-            subprocess.call([rtconfig.OBJCPY, '-Obinary', str(source[0]), bin_path])
+            subprocess.run([rtconfig.OBJCPY, '-Obinary', str(source[0]), bin_path], check=True)
         else:
             os.mkdir(bin_path)
             exclude_ex_imgs = []
             for i in ex_imgs:
                 ex_img_path = os.path.join(bin_path, 'ER_IROM{}.bin'.format(i))
-                subprocess.call([rtconfig.OBJCPY, '-Obinary', '-j.rom{}'.format(i), str(source[0]), ex_img_path])
+                subprocess.run([rtconfig.OBJCPY, '-Obinary', '-j.rom{}'.format(i), str(source[0]), ex_img_path], check=True)
                 exclude_ex_imgs += ['-R.rom{}'.format(i)]
 
             rom1_path = ex_img_path = os.path.join(bin_path, 'ER_IROM1.bin')
-            subprocess.call([rtconfig.OBJCPY, '-Obinary'] + exclude_ex_imgs + [str(source[0]), rom1_path])
+            subprocess.run([rtconfig.OBJCPY, '-Obinary'] + exclude_ex_imgs + [str(source[0]), rom1_path], check=True)
 
 
 def ProgramHexBuild(target, source, env):
@@ -346,32 +346,32 @@ def ProgramHexBuild(target, source, env):
         ex_imgs = []
         tempfile_path = os.path.join(target_path, 'rom_temp.hex')
         for i in range(2, 2 + MAX_EX_IMG_NUM):
-            subprocess.call([rtconfig.OBJCPY, '-Obinary', '-j.rom{}'.format(i), str(source[0]), tempfile_path])
+            subprocess.run([rtconfig.OBJCPY, '-Obinary', '-j.rom{}'.format(i), str(source[0]), tempfile_path], check=True)
             size = os.path.getsize(tempfile_path)
             os.remove(tempfile_path)
             if size > 0:
                 ex_imgs.append(i)
 
         if len(ex_imgs) == 0:
-            subprocess.call([rtconfig.OBJCPY, '-O', 'ihex', str(source[0]), hex_path])
+            subprocess.run([rtconfig.OBJCPY, '-O', 'ihex', str(source[0]), hex_path], check=True)
         else:
             os.mkdir(hex_path)
             exclude_ex_imgs = []
             for i in ex_imgs:
                 ex_img_path = os.path.join(hex_path, 'ER_IROM{}.hex'.format(i))
-                subprocess.call([rtconfig.OBJCPY, '-O', 'ihex', '-j.rom{}'.format(i), str(source[0]), ex_img_path])
+                subprocess.run([rtconfig.OBJCPY, '-O', 'ihex', '-j.rom{}'.format(i), str(source[0]), ex_img_path], check=True)
                 exclude_ex_imgs += ['-R.rom{}'.format(i)]
 
             rom1_path = ex_img_path = os.path.join(hex_path, 'ER_IROM1.hex')
-            subprocess.call([rtconfig.OBJCPY, '-O', 'ihex'] + exclude_ex_imgs + [str(source[0]), rom1_path])
+            subprocess.run([rtconfig.OBJCPY, '-O', 'ihex'] + exclude_ex_imgs + [str(source[0]), rom1_path], check=True)
 
 
     else:    
-        subprocess.call(['fromelf', '--i32', str(source[0]), '--output', hex_path])    
+        subprocess.run(['fromelf', '--i32', str(source[0]), '--output', hex_path], check=True)    
         if os.path.isdir(hex_path):
             # delete the folder to clean old files
             shutil.rmtree(hex_path)
-            subprocess.call(['fromelf', '--i32', str(source[0]), '--output', hex_path])    
+            subprocess.run(['fromelf', '--i32', str(source[0]), '--output', hex_path], check=True)    
             dir_list = os.listdir(hex_path)
             for d in dir_list:
                 if '.hex' not in d:
@@ -389,11 +389,11 @@ def ProgramAsmBuild(target, source, env):
     import rtconfig
     if rtconfig.PLATFORM == 'armcc':
         if GetDepend("SOC_SF32LB58X") or GetDepend("SOC_SF32LB56X"):
-            subprocess.call(['fromelf', '--cpu=8-M.Main', '--coproc1=cde', '--text', '-c', str(source[0]), '--output', asm_path])
+            subprocess.run(['fromelf', '--cpu=8-M.Main', '--coproc1=cde', '--text', '-c', str(source[0]), '--output', asm_path], check=True)
         else:
-            subprocess.call(['fromelf', '--text', '-c', str(source[0]), '--output', asm_path])
+            subprocess.run(['fromelf', '--text', '-c', str(source[0]), '--output', asm_path], check=True)
     elif rtconfig.PLATFORM == 'gcc':
-        subprocess.call([rtconfig.OBJDUMP, '-d', str(source[0])], stdout=open(asm_path,"wb+"))
+        subprocess.run([rtconfig.OBJDUMP, '-d', str(source[0])], stdout=open(asm_path,"wb+"), check=True)
     
 def LdsBuild(target, source, env):
     import rtconfig
@@ -433,7 +433,7 @@ def FsBuild(target, source, env):
         target=os.path.join(env['build_dir'],'fs_root.bin') 
         page_size=env['page_size']
         page_number=max_size/page_size
-        subprocess.call([env['fs_mkimg'],env['fs_root'],target,str(page_number),str(page_size)])
+        subprocess.run([env['fs_mkimg'],env['fs_root'],target,str(page_number),str(page_size)], check=True)
 
 def ModifyLdsTargets(target, source, env):
     target = [os.path.join(env['build_dir'], 'link_copy.lds')]
@@ -448,10 +448,10 @@ def EmbeddedImgCFileBuild(target, source, env):
     if os.path.isdir(s):
         s = os.path.join(s, 'ER_IROM1.bin')
     if "acpu" in s:
-        subprocess.call(['python', GEN_SRC_PATH, 'general', s, target_path, "acpu"])
+        subprocess.run(['python', GEN_SRC_PATH, 'general', s, target_path, "acpu"], check=True)
         shutil.move(os.path.join(target_path, 'acpu_img.c'), str(target[0]))
     else:
-        subprocess.call(['python', GEN_SRC_PATH, 'lcpu', s, target_path])
+        subprocess.run(['python', GEN_SRC_PATH, 'lcpu', s, target_path], check=True)
         shutil.move(os.path.join(target_path, 'lcpu_img.c'), str(target[0]))
 
 
@@ -1281,7 +1281,7 @@ def PrepareBuilding(env, has_libcpu=False, remove_components=[], buildlib=None):
                     help = 'make menuconfig for RT-Thread BSP')
     if GetOption('menuconfig'):
         board = f"--board={GetOption('board')}"
-        subprocess.call([sys.executable, os.path.join(SIFLI_SDK, 'tools',"kconfig" , 'menuconfig.py'), board])
+        subprocess.run([sys.executable, os.path.join(SIFLI_SDK, 'tools',"kconfig" , 'menuconfig.py'), board], check=True)
         exit(0)
 
     if not option_added:
