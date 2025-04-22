@@ -4,7 +4,7 @@ Project: SiFliSDK
 
 redmine: #id, REDMINE-id
 
-ext-redmine: bug|feat#id
+ext-redmine: REDMINE-id
 
 [Description in detail]
 
