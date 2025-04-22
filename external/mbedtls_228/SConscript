@@ -119,7 +119,7 @@ if len(ROOT_CA_FILE) > 0:
     for i in range(0, len(ROOT_CA_FILE)):
         if os.path.isfile(ROOT_CA_FILE[i]):
             # READ CER FILE, copy to tls_certificate.c
-            with open(ROOT_CA_FILE[i], 'r') as ca:
+            with open(ROOT_CA_FILE[i], 'r', encoding='utf-8') as ca:
                 # Pre-read, check first line
                 if not ca.readline().startswith("-----BEGIN CERTIFICATE"):
                     print("[mbedtls] Warning: ", ROOT_CA_FILE[i], "is not CA file! Skipped!")
