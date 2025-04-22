@@ -9,6 +9,7 @@ import yaml
 import shutil
 import codecs
 import tempfile
+import platform
 
 
 class SDKBuilder(object):
@@ -20,12 +21,21 @@ class SDKBuilder(object):
         self.build_log_dir = os.path.join(self.root_dir, self.config['common']['log_dir'])
         if not os.path.exists(self.build_log_dir):
             os.makedirs(self.build_log_dir)
+        self.is_windows = platform.system() == 'Windows'
 
     def _load_config(self, config_file):
         with codecs.open(config_file, 'r', encoding='utf-8') as f:
             return yaml.safe_load(f)
 
-    def _create_build_batch(self, commands, work_dir=None, log_file=None):
+    def _create_build_script(self, commands, work_dir=None, log_file=None):
+        """创建构建脚本，根据不同的操作系统创建.bat或.sh文件"""
+        if self.is_windows:
+            return self._create_windows_script(commands, work_dir, log_file)
+        else:
+            return self._create_unix_script(commands, work_dir, log_file)
+
+    def _create_windows_script(self, commands, work_dir=None, log_file=None):
+        """创建Windows构建脚本(.bat)"""
         fd, path = tempfile.mkstemp(suffix='.bat')
         try:
             with os.fdopen(fd, 'w') as f:
@@ -54,15 +64,51 @@ class SDKBuilder(object):
                     else:
                         f.write('{0}\n'.format(cmd))
             return path
-        except:
+        except Exception as e:
             os.remove(path)
-            raise
+            raise e
+
+    def _create_unix_script(self, commands, work_dir=None, log_file=None):
+        """创建Unix构建脚本(.sh)，适用于Linux和macOS"""
+        fd, path = tempfile.mkstemp(suffix='.sh')
+        try:
+            with os.fdopen(fd, 'w') as f:
+                f.write('#!/bin/bash\n')
+                
+                if log_file:
+                    log_dir = os.path.dirname(log_file)
+                    if log_dir:
+                        f.write('mkdir -p "{0}"\n'.format(log_dir))
+
+                # 使用export.sh脚本设置环境
+                f.write('source "{0}" {1}\n'.format(os.path.join(self.root_dir, "export.sh"), self.compiler))
+
+                if work_dir:
+                    f.write('cd "{0}" || exit 1\n'.format(work_dir))
+
+                for cmd in commands:
+                    if log_file:
+                        f.write('echo "[$(date)] Executing: {0}" >> "{1}"\n'.format(cmd, log_file))
+                        f.write('{0} >> "{1}" 2>&1\n'.format(cmd, log_file))
+                        f.write('BUILD_ERROR=$?\n')
+                        f.write('if [ $BUILD_ERROR -ne 0 ]; then\n')
+                        f.write('    echo "[$(date)] Command failed with error code $BUILD_ERROR" >> "{0}"\n'.format(log_file))
+                        f.write('    exit $BUILD_ERROR\n')
+                        f.write('fi\n')
+                    else:
+                        f.write('{0}\n'.format(cmd))
+            # 确保脚本可执行
+            os.chmod(path, 0o755)
+            return path
+        except Exception as e:
+            os.remove(path)
+            raise e
 
     def _run_commands(self, commands, work_dir=None, log_file=None):
-        batch_file = self._create_build_batch(commands, work_dir, log_file)
+        batch_file = self._create_build_script(commands, work_dir, log_file)
         try:
             process = subprocess.Popen(
-                'cmd.exe /c "{0}"'.format(batch_file),
+                'cmd.exe /c "{0}"'.format(batch_file) if self.is_windows else 'bash "{0}"'.format(batch_file),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 shell=True
