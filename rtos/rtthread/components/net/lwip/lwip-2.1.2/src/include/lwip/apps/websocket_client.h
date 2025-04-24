@@ -45,7 +45,9 @@ extern "C" {
 
 #define WSLEN_SMALL         125     // 125 bytes => 7 bits (not 8), less 1
 #define WSLEN_BIG           32768   // 32K bytes => 16 bits
-#define WSMSG_MAXSIZE       1420    // ~ single packet size after headers
+#define WSMSG_MAXSIZE       (4096 * 4)    // ~ single packet size after headers
+#define WS_CACHE_SIZE       (4096 * 4)
+
 // ip:20/tcp:32/ws:14 --> total:68
 
 #define WSHDRLEN_MIN        2
@@ -101,6 +103,7 @@ typedef err_t (*wsapp_fn)(int code, char *buf, size_t len);
 typedef struct _wsock_state
 {
     unsigned int        state0;
+    struct altcp_tls_config *pconf;
     struct altcp_pcb    *pcb;
     ip_addr_t           remote_addr;
     u16_t               remote_port;
@@ -113,6 +116,15 @@ typedef struct _wsock_state
     wsock_parse_state_t parse_state;
     char                server_rsp[WSOCK_KEY_SIZE];
     char                client_key[WSOCK_KEY_SIZE];
+
+
+    u8_t                cache[WS_CACHE_SIZE];
+    uint32_t            offset;
+    uint32_t            pbuf_offset;
+    u8_t                fragments[WSMSG_MAXSIZE];
+    uint16_t            frag_offset;
+    uint8_t             frag_opcode;
+    uint8_t             is_frag;
 
     // web socket control parameters
     int                 tcp_polls;

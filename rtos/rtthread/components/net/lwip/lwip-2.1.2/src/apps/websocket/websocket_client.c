@@ -84,6 +84,7 @@
 #include "lwip/debug.h"
 #include "lwip/mem.h"
 #include "lwip/init.h"
+#include "lwip/tcpip.h"
 #include "lwip/apps/http_client.h"
 #include "lwip/apps/websocket_client.h"
 #include "lws-sha1-base64.h"
@@ -111,7 +112,7 @@ static err_t wsock_tcp_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *p, er
 static void wsock_tcp_err(void *arg, err_t err);
 static err_t wsock_tcp_poll(void *arg, struct altcp_pcb *pcb);
 static err_t wsock_tcp_sent(void *arg, struct altcp_pcb *pcb, u16_t len);
-static void wsock_invoke_app(wsock_state_t *pws, struct pbuf *pb);
+static void wsock_invoke_app(wsock_state_t *pws, char    *pktbuf);
 static err_t wsock_connect_dns(wsock_state_t *pws, const char *srvname);
 static void wsock_hexdump(unsigned char *buf, size_t len);
 
@@ -134,8 +135,12 @@ wsock_init(wsock_state_t *pws, int ssl_enabled, int ping_enabled, wsapp_fn messa
     int     n;
     char    keybuf[WSOCK_KEY_BUF_SIZE], keyhash[WSOCK_KEY_HASH_SIZE];
 
-    // Initialize the websocket state struct
-    LWIP_ASSERT("pws != NULL", pws != NULL);
+    if (pws == NULL || pws->pcb != NULL)
+    {
+        printf("websocket init err\n");
+        return ERR_ARG;
+    }
+
     memset(pws, 0, sizeof(wsock_state_t));
 
     pws->ssl_enabled     = ssl_enabled;
@@ -149,11 +154,11 @@ wsock_init(wsock_state_t *pws, int ssl_enabled, int ping_enabled, wsapp_fn messa
 
         // Client TLS config may optionally take a certificate authority and
         // certificate length.  For now, we do not have this.
-        struct altcp_tls_config *pconf = altcp_tls_create_config_client(cert, cert_len);
-        LWIP_ASSERT("pconf != NULL", pconf != NULL);
+        pws->pconf = altcp_tls_create_config_client(cert, cert_len);
+        LWIP_ASSERT("pconf != NULL", pws->pconf != NULL);
 
         // Allocate the TLS protocol control block.
-        pws->pcb = altcp_tls_new(pconf, IPADDR_TYPE_ANY);
+        pws->pcb = altcp_tls_new(pws->pconf, IPADDR_TYPE_ANY);
     }
     else // Allocate a non-SSL TCP protocol control block.
         pws->pcb = altcp_new(NULL);
@@ -200,7 +205,7 @@ const char *reqfmts  = "GET %s HTTP/1.1\r\n"            /* path                 
                        "Host: %s\r\n"                   /* destination host             */ \
                        "Upgrade: websocket\r\n"         /* protocol upgrade headers     */ \
                        "Connection: Upgrade\r\n";       /* protocol upgrade headers     */
-const char *authfmt  = "Authorization: bearer %s\r\n";  /* bearer token for auth        */
+const char *authfmt  = "Authorization: Bearer %s\r\n";  /* bearer token for auth        */
 const char *extrafmt = "%s: %s\r\n";                    /* some other user header       */
 const char *origfmt  = "Origin: bearer %s\r\n";         /* CSRF protection              */
 const char *keyfmt   = "Sec-WebSocket-Key: %s\r\n";     /* calculated ws key            */
@@ -230,10 +235,11 @@ wsock_connect(wsock_state_t *pws,    uint16_t len, const char *srvname, const ch
     err_t   err;
     char *buf;
 
-    LWIP_ASSERT("pws != NULL", pws != NULL);
-    LWIP_ASSERT("pws->pcb != NULL", pws->pcb != NULL);
-    LWIP_ASSERT("pws->state0 == alloc'd", (pws->state0 == PWS_STATE_INITD));
-    LWIP_ASSERT("pws->state1 == alloc'd", (pws->state1 == PWS_STATE_INITD));
+    if (pws==NULL || pws->pcb==NULL || pws->state0!=PWS_STATE_INITD || pws->state1!=PWS_STATE_INITD)
+    {
+        printf("wsock_connect: invalid state\n");
+        return ERR_VAL;
+    }
 
     if ((len < 0) || (len > 0xFFFF))
         return ERR_VAL;
@@ -278,7 +284,7 @@ wsock_connect(wsock_state_t *pws,    uint16_t len, const char *srvname, const ch
     }
 
     if (wsverbose)
-        printf("HANDSHAKE: %s\n", pws->request->payload);
+        printf("HANDSHAKE: %s\n", (char *)pws->request->payload);
     RT_ASSERT(strlen(buf) <= len)
 
     pws->request->len = strlen(buf) + 1;
@@ -416,7 +422,7 @@ wsock_dns_found(const char *hostname, const ip_addr_t *ipaddr, void *arg)
     wsock_state_t *pws = (wsock_state_t *)arg;
 
     LWIP_ASSERT("pws != NULL", pws != NULL);
-    LWIP_ASSERT("pws->pcb != NULL", pws->pcb != NULL);
+    // LWIP_ASSERT("pws->pcb != NULL", pws->pcb != NULL);
     LWIP_ASSERT("pws->state0 == alloc'd", (pws->state0 == PWS_STATE_INITD));
     LWIP_ASSERT("pws->state1 == alloc'd", (pws->state1 == PWS_STATE_INITD));
 
@@ -454,7 +460,7 @@ wsock_connect_dns(wsock_state_t *pws, const char *srvname)
     err_t err;
 
     LWIP_ASSERT("pws != NULL", pws != NULL);
-    LWIP_ASSERT("pws->pcb != NULL", pws->pcb != NULL);
+    // LWIP_ASSERT("pws->pcb != NULL", pws->pcb != NULL);
     LWIP_ASSERT("pws->state0 == alloc'd", (pws->state0 == PWS_STATE_INITD));
     LWIP_ASSERT("pws->state1 == alloc'd", (pws->state1 == PWS_STATE_INITD));
 
@@ -488,8 +494,11 @@ err_t wsock_close(wsock_state_t *pws, wsock_result_t result, err_t err)
 
     err_t   close_err = err;
 
-    if (pws->message_handler)
-        pws->message_handler(WS_DISCONNECT, (char *)(uint32_t)err, 0);
+    if (pws->tcp_state == WS_TCP_CLOSED)
+    {
+        rt_kprintf("wsocTCP already closed\n");
+        return ERR_OK;
+    }
 
     if (!pws)
     {
@@ -500,7 +509,7 @@ err_t wsock_close(wsock_state_t *pws, wsock_result_t result, err_t err)
     if (pws->tcp_state == WS_TCP_CLOSED)
     {
         printf("wsock_close() TCP already closed\n");
-        return ERR_CLSD;
+        // return ERR_CLSD;
     }
 
     if (!(pws->pcb &&
@@ -508,7 +517,7 @@ err_t wsock_close(wsock_state_t *pws, wsock_result_t result, err_t err)
             (pws->state1 == PWS_STATE_INITD)))
     {
         printf("wsock_close() passed invalid wsock_state_t struct\n");
-        return ERR_ABRT;
+        // return ERR_ABRT;
     }
 
     /* LWIP_ASSERT("pws != NULL", pws != NULL);
@@ -547,10 +556,23 @@ err_t wsock_close(wsock_state_t *pws, wsock_result_t result, err_t err)
 
         pws->pcb = NULL;
     }
+    if (pws->pconf) {
+        altcp_tls_free_config(pws->pconf);
+        pws->pconf = NULL;
+    }
 
     pws->tcp_state = WS_TCP_CLOSED;
     pws->state0    = PWS_STATE_DONE;
     pws->state1    = PWS_STATE_DONE;
+    pws->offset    = 0;
+    pws->frag_offset = 0;
+    pws->is_frag   = 0;
+    if (pws->message_handler)
+    {
+        rt_kprintf("wsocTCP close\n");
+        pws->message_handler(WS_DISCONNECT, (char *)(uint32_t)err, 0);
+    }
+
     return close_err;
 }
 
@@ -672,7 +694,7 @@ wsock_wait_headers(struct pbuf *p, u32_t *content_length, u16_t *total_header_le
  *  @param  pb  received buffer (websocket data)
  */
 static int
-wsock_controlmsg(wsock_state_t *pws, struct pbuf *pb)
+wsock_controlmsg(wsock_state_t *pws, char *pktbuf)
 {
     if (wsverbose) FNTRACE();
 
@@ -681,7 +703,6 @@ wsock_controlmsg(wsock_state_t *pws, struct pbuf *pb)
     LWIP_ASSERT("pws->state0 == alloc'd", (pws->state0 == PWS_STATE_INITD));
     LWIP_ASSERT("pws->state1 == alloc'd", (pws->state1 == PWS_STATE_INITD));
 
-    char    *pktbuf = (char *)(pb->payload);
     uint8_t opcode  = pktbuf[0] & WSHDRBITS_OPCODE;
     uint8_t paylen  = pktbuf[1] & WSHDRBITS_PAYLOAD_LEN;
 
@@ -709,11 +730,18 @@ wsock_controlmsg(wsock_state_t *pws, struct pbuf *pb)
         // Copy the ping payload into our pong payload buffer.  It must
         // be masked and sent to the server in the response.
         if (paylen > WSPONG_MAX_PAYLOAD)
+        {
             pws->ponglen = 0;   // We can't support a large pong payload.
+            printf("Received PING payload too large: %u bytes\n", paylen);
+        }
         else
+        {
             pws->ponglen = paylen;
+            memcpy(&(pws->pong_payload[0]), paybuf, paylen);
+        }
 
-        memcpy(&(pws->pong_payload[0]), paybuf, paylen);
+
+
 
         return 1;
     }
@@ -730,6 +758,34 @@ wsock_controlmsg(wsock_state_t *pws, struct pbuf *pb)
     return 0;
 }
 
+static uint32_t wsock_pkt_len(char *pkt)
+{
+    uint32_t len = (u16_t)(pkt[1] & WSHDRBITS_PAYLOAD_LEN);
+    if (len == WSHDRBITS_PAYLOAD_LEN_EXT16) {
+        len = ntohs(*((uint16_t *) &pkt[2]));
+        len += 4;
+    }
+    else
+        len += 2;
+
+    if (pkt[1] & WSHDRBITS_MASKED)
+        len += 4;
+    return len;
+}
+static uint8_t wanted_data_from_pbuf_to_cache(wsock_state_t *pws, struct pbuf *pb, uint32_t wanted)
+{
+    uint32_t readed;
+    if (wanted > pws->offset)
+    {
+        uint32_t remain = wanted - pws->offset;
+        readed = pbuf_copy_partial(pb, pws->cache + pws->offset, remain, pws->pbuf_offset);
+        pws->pbuf_offset += readed;
+        pws->offset += readed;
+        if (!readed || readed < remain)
+            return 0;
+    }
+    return 1;
+}
 /**
  *  Callback from the TCP layer - adapted from http client example
  *
@@ -836,19 +892,98 @@ wsock_tcp_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *pb, err_t err)
     // Handle received data.
     if (pws->parse_state == WSOCK_PARSE_RX_DATA && (pb->tot_len > 0))
     {
+        int delta=0;
         pws->rx_data_bytes += pb->tot_len;
-
         // received valid data; reset the timeout
         pws->timeout_ticks = WSOCK_POLL_TIMEOUT;
-        if (!wsock_controlmsg(pws, pb))
+
+        if (wsverbose)
         {
-            // Hand off the message to the application layer.
-            if (pws->message_handler)
-                wsock_invoke_app(pws, pb);
-            else
-                printf("NO MESSAGE HANDLER FOR RECEIVED MESSAGE!!\n");
+            printf("\npbuf coming=%d:\n", pb->tot_len);
+            struct pbuf *p = pb;
+            while(p)
+            {
+                printf("\r\n---frag len=%d\r\n", p->len);
+                wsock_hexdump(pb->payload, p->len);
+                p = p->next;
+            }
         }
 
+        pws->pbuf_offset = 0;
+        while (1)
+        {
+            uint32_t data_len, head_len;
+            // 1. ensure first 2 bytes in cache
+            if (!wanted_data_from_pbuf_to_cache(pws, pb, 2))
+            {
+                if (wsverbose)
+                {
+                    printf("cache step 1 break=%d\n", pws->offset);
+                    wsock_hexdump(pws->cache, pws->offset);
+                }
+                break;
+            }
+            // 2. check first 2 bytes header
+            data_len = pws->cache[1] & WSHDRBITS_PAYLOAD_LEN;
+            head_len = 2; //opcode and len
+            if (pws->cache[1] & WSHDRBITS_MASKED)
+            {
+                head_len += 4; //4 // 4 bytes mask
+            }
+            if (data_len == WSHDRBITS_PAYLOAD_LEN_EXT16)
+            {
+                head_len += 2; // 2 bytes length
+            }
+            else if (data_len == WSHDRBITS_PAYLOAD_LEN_EXT64)
+            {
+                head_len += 8; // 8 bytes length
+            }
+            // 3. ensure all heaer in cache
+            if (!wanted_data_from_pbuf_to_cache(pws, pb, head_len))
+            {
+                if (wsverbose)
+                {
+                    printf("cache step 3 break=%d\n", pws->offset);
+                    wsock_hexdump(pws->cache, pws->offset);
+                }
+                break;
+            }
+            if (wsverbose)
+            {
+                size_t s = pws->offset > 8 ? 8 : pws->offset;
+                printf("cache step 3=%d\n", pws->offset);
+                wsock_hexdump(pws->cache, s);
+            }
+            // 4. all head in cache now, ensure all data readed
+            uint32_t data_head_len = wsock_pkt_len(pws->cache);
+            if (data_head_len > WS_CACHE_SIZE)
+            {
+                printf("should define WS_CACHE_SIZE >= %d\n", data_head_len);
+                rt_thread_mdelay(100);
+                RT_ASSERT(0);
+            }
+            if (!wanted_data_from_pbuf_to_cache(pws, pb, data_head_len))
+            {
+                if (wsverbose)
+                {
+                    printf("cache step 4 break=%d\n", pws->offset);
+                }
+                break;
+            }
+            // 5. got packet, using it
+            if (!wsock_controlmsg(pws, pws->cache))
+            {
+                // Hand off the message to the application layer.
+                if (pws->message_handler)
+                    wsock_invoke_app(pws, (char*)pws->cache);
+                else
+                    printf("NO MESSAGE HANDLER FOR RECEIVED MESSAGE!!\n");
+            }
+
+            // 5. check next packet in pbuf
+            pws->offset = 0;
+
+        }
         if (wsverbose)
             printf("freeing rcvd pbuf in wsock_tcp_recv()\n");
 
@@ -867,7 +1002,7 @@ wsock_tcp_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *pb, err_t err)
  *  @param  pb  received buffer (websocket data)
  */
 static void
-wsock_invoke_app(wsock_state_t *pws, struct pbuf *pb)
+wsock_invoke_app(wsock_state_t *pws, char *pktbuf)
 {
     if (wsverbose) FNTRACE();
 
@@ -876,15 +1011,18 @@ wsock_invoke_app(wsock_state_t *pws, struct pbuf *pb)
     LWIP_ASSERT("pws->state0 == alloc'd", (pws->state0 == PWS_STATE_INITD));
     LWIP_ASSERT("pws->state1 == alloc'd", (pws->state1 == PWS_STATE_INITD));
 
-    char    *pktbuf = (char *)(pb->payload);
     char    *paybuf = pktbuf + WSHDRLEN_MIN;
     uint8_t opcode  = pktbuf[0] & WSHDRBITS_OPCODE;
     uint8_t minlen  = pktbuf[1] & WSHDRBITS_PAYLOAD_LEN;
     size_t  paylen  = minlen;
+    uint8_t is_fin  = pktbuf[0] & WSHDRBITS_FIN;
 
-next_opcode:
-
-    if (opcode != OPCODE_TEXT && opcode != OPCODE_BINARY)
+    if (opcode == OPCODE_TEXT || opcode == OPCODE_BINARY)
+    {
+        pws->frag_opcode = opcode;
+        pws->frag_offset = 0;
+    }
+    else if (opcode != OPCODE_CONTINUATION)
     {
         printf("got invalid opcode: %d\n", opcode);
         return;
@@ -898,47 +1036,42 @@ next_opcode:
         paybuf += WSHDRLEN_EXT16BITS;
         paylen = ntohs(*((uint16_t *) &pktbuf[2]));
     }
-
-    // Don't support fragmentation and large messages yet.
-    if ((minlen == WSHDRBITS_PAYLOAD_LEN_EXT64) || (paylen > WSMSG_MAXSIZE))
+    if (minlen == WSHDRBITS_PAYLOAD_LEN_EXT64)
     {
-        printf("oversize websocket messages not supported\n");
-        return;
+        printf("not support 64bit length now");
+        RT_ASSERT(0);
     }
-
-    // tot_len is length of the received data
-    if (paylen > pb->tot_len)
-    {
-        printf("got invalid size: %d bytes\n", paylen);
-        return;
-    }
-
-    if (!(pb->tot_len > 0))
-    {
-        printf("got invalid pbuf size: %d bytes\n", pb->tot_len);
-        return;
-    }
-
     if (wsverbose)
     {
         printf("rcvd WS msg type: %s len %u\n", opcode2str(opcode), paylen);
-        wsock_hexdump(pb->payload, pb->tot_len);
+        wsock_hexdump(pktbuf, paylen);
     }
 
     if (pws->message_handler)
     {
-        pws->message_handler((opcode == OPCODE_TEXT) ? WS_TEXT : WS_DATA, paybuf, paylen);
-    }
-
-    pktbuf = paybuf + paylen;
-
-    if ((uint32_t)pktbuf - (uint32_t)(pb->payload) + 2 < pb->tot_len)
-    {
-        paybuf = pktbuf + WSHDRLEN_MIN;
-        opcode = pktbuf[0] & WSHDRBITS_OPCODE;
-        minlen = pktbuf[1] & WSHDRBITS_PAYLOAD_LEN;
-        paylen = minlen;
-        goto next_opcode;
+        if (!is_fin)
+        {
+            pws->is_frag = 1;
+        }
+        if (pws->is_frag && paylen > 0)
+        {
+            RT_ASSERT(pws->frag_offset + paylen < WSMSG_MAXSIZE);
+            memcpy(&pws->fragments[pws->frag_offset], paybuf, paylen);
+            pws->frag_offset += paylen;
+        }
+        if (is_fin)
+        {
+            if (pws->is_frag)
+            {
+                pws->message_handler((pws->frag_opcode == OPCODE_TEXT) ? WS_TEXT : WS_DATA, pws->fragments, pws->frag_offset);
+                pws->frag_offset = 0;
+                pws->is_frag = 0;
+            }
+            else
+            {
+                pws->message_handler((opcode == OPCODE_TEXT) ? WS_TEXT : WS_DATA, paybuf, paylen);
+            }
+        }
     }
 }
 
@@ -998,22 +1131,30 @@ wsock_write(wsock_state_t *pws, const char *buf, u16_t buflen, uint8_t opcode)
 {
     if (wsverbose) FNTRACE();
 
-    LWIP_ASSERT("pws != NULL", pws != NULL);
-    LWIP_ASSERT("pws->pcb != NULL", pws->pcb != NULL);
-    LWIP_ASSERT("pws->state0 == alloc'd", (pws->state0 == PWS_STATE_INITD));
-    LWIP_ASSERT("pws->state1 == alloc'd", (pws->state1 == PWS_STATE_INITD));
+    if (pws == NULL
+         || pws->pcb == NULL
+         || pws->state0 != PWS_STATE_INITD
+         || pws->state1 != PWS_STATE_INITD)
+    {
+        printf("wsock_write() passed invalid wsock_state_t struct\n");
+        return ERR_CONN;
+    }
 
-    err_t   err;
+    err_t   err = ERR_OK;
     char    hdr[WSHDRLEN_MAX], *maskkey;
     size_t  hdrlen = WSHDRLEN_MIN, pktlen = 0;
 
-    if ((buflen > 0) && !buf)
-        return ERR_VAL;
+    LOCK_TCPIP_CORE();
+    if ((buflen > 0) && !buf) {
+        err = ERR_VAL;
+        goto end;
+    }
 
     if (pws->tcp_state != WS_TCP_CONNECTED)
     {
         printf("  wsock_write() tcp not connected (%d)\n", pws->tcp_state);
-        return ERR_CONN;
+        err = ERR_CONN;
+        goto end;
     }
 
     // Generate the websocket header and calculate the length of the buffer
@@ -1051,7 +1192,8 @@ wsock_write(wsock_state_t *pws, const char *buf, u16_t buflen, uint8_t opcode)
     {
         // Only support smaller payload sizes.
         printf("aborting due to oversize payload\n");
-        return wsock_close(pws, WSOCK_RESULT_ERR_MEM, ERR_MEM);
+        err = wsock_close(pws, WSOCK_RESULT_ERR_MEM, ERR_MEM);
+        goto end;
     }
 
     // Generate the masking key
@@ -1067,14 +1209,16 @@ wsock_write(wsock_state_t *pws, const char *buf, u16_t buflen, uint8_t opcode)
     if (pws->request == NULL)
     {
         printf("aborting due to pbuf_alloc() failed ...\n");
-        return wsock_close(pws, WSOCK_RESULT_ERR_MEM, ERR_MEM);
+        err = wsock_close(pws, WSOCK_RESULT_ERR_MEM, ERR_MEM);
+        goto end;
     }
 
     if (pws->request->next != NULL)
     {
         // pbuf needs to be in one piece ...
         printf("aborting due to fragmented pbuf ...\n");
-        return wsock_close(pws, WSOCK_RESULT_ERR_MEM, ERR_MEM);
+        err = wsock_close(pws, WSOCK_RESULT_ERR_MEM, ERR_MEM);
+        goto end;
     }
 
     if (wsverbose) printf("==> ALLOC'D pbuf 2 ...\n");
@@ -1101,7 +1245,8 @@ wsock_write(wsock_state_t *pws, const char *buf, u16_t buflen, uint8_t opcode)
     if (err != ERR_OK)
     {
         printf("altcp_write() failed - closing wsock\n");
-        return wsock_close(pws, WSOCK_RESULT_ERR_UNKNOWN, err);
+        err = wsock_close(pws, WSOCK_RESULT_ERR_UNKNOWN, err);
+        goto end;
     }
 
     // success; free the request
@@ -1112,7 +1257,9 @@ wsock_write(wsock_state_t *pws, const char *buf, u16_t buflen, uint8_t opcode)
     pws->request = NULL;
 
     altcp_output(pws->pcb);
-    return ERR_OK;
+end:
+    UNLOCK_TCPIP_CORE();
+    return err;
 }
 
 /**
@@ -1173,6 +1320,9 @@ wsock_tcp_poll(void *arg, struct altcp_pcb *pcb)
     // If we have been pinged, send a pong.
     if (pws->send_pong)
     {
+        if (wsverbose)
+            printf("sending pong\n");
+
         pws->pong_sent++;
         pws->send_pong = 0;
         err = wsock_write(pws, &(pws->pong_payload[0]), pws->ponglen, OPCODE_PONG);
