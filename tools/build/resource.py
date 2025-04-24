@@ -1077,7 +1077,7 @@ def BuildJLinkLoadScript(main_env):
     uart_comment = '@echo off\ntitle=uart download\nset WORK_PATH=%~dp0\nset CURR_PATH=%cd%\ncd %WORK_PATH%\n:start\necho,\necho      \
 Uart Download\necho,\nset /p input=please input the serial port num:\ngoto download\n:download\necho com%input%\n'
     if os.getenv("LEGACY_ENV"):
-        uart_comment += MakeLine('{} --func 0 --port com%input% --baund 3000000 --loadram 1 --postact 1 --device {} \
+        uart_comment += MakeLine('{} --func 0 --port com%input% --baund 3000000 --loadram 1 --postact 1 --verify --device {} \
     --file ImgBurnList.ini --log ImgBurn.log\nif %errorlevel%==0 (\n    echo Download Successful\n)else (\n    echo Download Failed\n    \
     echo logfile:%WORK_PATH%ImgBurn.log\n)\ncd %CURR_PATH%\n'.format(ImgDownUart_PATH, main_env['JLINK_DEVICE']))
     else:
