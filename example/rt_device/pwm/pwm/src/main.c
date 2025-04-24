@@ -27,7 +27,9 @@ void pwm_set(uint8_t percentage, uint32_t period)
 #endif
 //    LOG_I("hysys_GPTIM2_PINR1:%x",((hwp_hpsys_cfg->GPTIM1_PINR) & HPSYS_CFG_GPTIM1_PINR_CH2_PIN_Msk)>>HPSYS_CFG_GPTIM1_PINR_CH2_PIN_Pos);
 
-    rt_uint32_t pulse = (percentage % 100) * period / 100;
+    if(percentage > 100)
+        percentage = 100;
+    rt_uint32_t pulse = percentage * period / 100;
 
     struct rt_device_pwm *device = RT_NULL;
     device = (struct rt_device_pwm *)rt_device_find(PWM_DEV_NAME);

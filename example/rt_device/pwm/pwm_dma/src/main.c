@@ -29,8 +29,9 @@ void pwm_dma_atim_set_example()
 #elif defined SF32LB58X
     HAL_PIN_Set(PAD_PA51, ATIM2_CH4, PIN_NOPULL, 1);//58X ATIM2_CH4 corresponds to pwma2_cc4
 #endif
-
-    rt_uint32_t pulse = (percentage % 100) * period / 100;
+    if(percentage > 100)
+        percentage = 100;
+    rt_uint32_t pulse = percentage * period / 100;
 #ifdef SF32LB52X
     config_atim.channel = 1;//pwm config
 #elif defined SF32LB58X
@@ -125,8 +126,9 @@ void pwm_dma_gptim_set_example()
 #elif defined SF32LB58X
     HAL_PIN_Set(PAD_PA51, GPTIM1_CH2, PIN_NOPULL, 1);//58X gtime1_ch2 corresponds to pwm2_cc2
 #endif
-
-    rt_uint32_t pulse = (percentage % 100) * period / 100;
+    if(percentage > 100)
+        percentage = 100;
+    rt_uint32_t pulse = percentage * period / 100;
 #ifdef SF32LB52X
     config_gtim.channel = 1;//pwm config
 #elif defined SF32LB58X
