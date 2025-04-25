@@ -590,9 +590,9 @@ def GetLinkScript(proj_path,board,chip,core):
         else:
             SIFLI_SDK = os.getenv('SIFLI_SDK')
             if CC_TOOLS=='keil':
-                link_script = os.path.join(SIFLI_SDK, "drivers/cmsis/{}/Templates/arm/{}/link".format(chip.lower(), core))
+                link_script = os.path.join(SIFLI_SDK, "drivers/cmsis/{}/Templates/arm/{}/link".format(chip.lower(), core.lower()))
             else:
-                link_script_template = os.path.join(SIFLI_SDK, "drivers/cmsis/{}/Templates/gcc/{}/link".format(chip.lower(), core))
+                link_script_template = os.path.join(SIFLI_SDK, "drivers/cmsis/{}/Templates/gcc/{}/link".format(chip.lower(), core.lower()))
                 link_script = link_script_template
             logging.debug('Use chip link file: {}'.format(link_script))
     return link_script,link_script_template
@@ -1010,7 +1010,7 @@ def PrepareBuilding(env, has_libcpu=False, remove_components=[], buildlib=None):
 
     # make an absolute root directory
     SIFLI_SDK=os.getenv('SIFLI_SDK')
-    Rtt_Root = SIFLI_SDK + 'rtos/rtthread'
+    Rtt_Root = os.path.join(SIFLI_SDK, 'rtos/rtthread')
 
     # set RTT_ROOT in ENV
     Env['RTT_ROOT'] = Rtt_Root
@@ -2389,7 +2389,7 @@ def SifliKeilEnv(cpu, BSP_ROOT=''):
     DEVICE=''
     rtconfig.AFLAGS=''
     rtconfig.CFLAGS=''
-    if cpu=='Cortex-M33':
+    if cpu=='cortex-m33':
         if not no_dsp_fp:
             rtconfig.AFLAGS+= '  --fpu=FPv5-SP --cpreproc_opts=-mfpu=fpv5-sp-d16 --cpreproc_opts=-mfloat-abi=hard --cpreproc_opts=-DARMCM33_DSP_FP --cpreproc --cpreproc_opts=--target=arm-arm-none-eabi --cpreproc_opts=-mfloat-abi=hard '
             rtconfig.CFLAGS+= ' -DARMCM33_DSP_FP '        
@@ -2495,7 +2495,7 @@ def LoadRtconfig(board):
     MergeRtconfig(proj_rtconfig, rtconfig)
         
     proj_rtconfig.OUTPUT_DIR = 'build_' + board + '/'
-    proj_rtconfig.LINK_SCRIPT, proj_rtconfig.LINK_SCRIPT_TEMPLATE=GetLinkScript('.',board,proj_rtconfig.CHIP,proj_rtconfig.CORE)
+    proj_rtconfig.LINK_SCRIPT, proj_rtconfig.LINK_SCRIPT_TEMPLATE=GetLinkScript('.',board,proj_rtconfig.CHIP,proj_rtconfig.CORE.lower())
     proj_rtconfig.TARGET_NAME = "main"
     
     # clear old rtconfig
@@ -2747,7 +2747,7 @@ def SifliEnv(BSP_Root = None):
     logging.debug("Version %08x, Build %s" %(rtconfig.sifli_version,rtconfig.sifli_build)) 
 
     try:       
-        cpu=GetDepend('CPU').replace('"','')
+        cpu=GetDepend('CPU').replace('"','').lower()
         rtconfig.CPU=cpu
     except:
         #TODO: it's not appropriate to use SOC name 
@@ -2762,7 +2762,7 @@ def SifliEnv(BSP_Root = None):
         else:
             cpu='Cortex-M33'
             logging.error("Undefined core, please select BF0_HCPU/BF0_LCPU/BF0_ACPU")
-        rtconfig.CPU=cpu
+        rtconfig.CPU=cpu.lower()
      
     if GetDepend('BSP_USING_PC_SIMULATOR'):
         rtconfig.ARCH='sim'
