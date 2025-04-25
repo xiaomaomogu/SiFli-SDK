@@ -23,8 +23,9 @@
 
 ### 硬件需求
 运行该例程前，需要准备：
-+ 一块本例程支持的开发板（[支持的平台](quick_start)）。
++ 两块本例程支持的开发板（[支持的平台](quick_start)）。
 + 喇叭。
++ 两根数据线（分别用作两块板子的程序烧录）。
 
 ### menuconfig配置
 
@@ -57,6 +58,16 @@
     HAL_PIN_Set(PAD_PA02, I2S1_MCLK, PIN_NOPULL, 1);
 #endif
 #endif
+
+如需使用其他型号开发板，需要更改pinmux配置，这里以56x 为例：
+
+#ifdef SOC_SF32LB56X
+    HAL_PIN_Set(PAD_PA71, I2S1_LRCK, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA40, I2S1_BCK, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA38, I2S1_SDI, PIN_PULLDOWN, 1);
+    HAL_PIN_Set(PAD_PA39, I2S1_SDO, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA37, I2S1_MCLK, PIN_NOPULL, 1);
+#endif
 ````
 接线：
 开发板A | -- | 开发板B
@@ -67,6 +78,11 @@ I2S1_SDI|--|I2S1_SDO
 I2S1_SDO|--|I2S1_SDI
 I2S1_MCLK|--|I2S1_MCLK
 
+不确定管脚定位的可以参考下图：
+SF32LB52x_DevKit_40p图片：
+![AUDIO CODEC & PROC](./assets/52x.png)
+SF32LB56x_DevKit_40p图片：
+![AUDIO CODEC & PROC](./assets/56x.png)
 ```{warning}
 `SF32LB52_DevKit-LCD`上：  
 + `PA02 ~ PA06`当有配置LCD时会被使用，需要注意冲突（需关闭LCD：`BSP_USING_LCD = n BSP_USING_LCDC = n`）。  
@@ -85,8 +101,15 @@ $ ./uart_download.bat
 
      Uart Download
 
-please input the serial port num:5
+please input the serial port num:5（板子A端口号）
 ```
+再烧一次板子B
+$ ./uart_download.bat
+
+     Uart Download
+
+please input the serial port num:6（板子B端口号）
+
 关于编译、下载的详细步骤，请参考[快速上手](quick_start)的相关介绍。
 
 ## 例程的预期结果
