@@ -963,7 +963,7 @@ def BuildJLinkLoadScript(main_env):
             elif not building.IsEmbeddedProjEnv(env):
                 s += MakeLine('loadfile {}'.format(os.path.relpath(hex_file, work_dir)))
                 download_file.append({
-                        'name': os.path.relpath(hex_path, work_dir),
+                        'name': os.path.relpath(hex_file, work_dir),
                         'addr': 0xFFFFFFFF
                     })
                 s_file += MakeLine('FILE{}={}'.format(s_num,os.path.relpath(hex_file, work_dir)))
