@@ -2567,10 +2567,11 @@ def GetBoardName(core=None):
     if board is not None:
         if not '_lcpu' in board and not '_hcpu' in board and not '_acpu' in board:
             #default set to HCPU
-            board+='_hcpu'      
+            board += '_hcpu'
         board_core = GetCoreType(board)
         if core and board_core and board_core != core:
-            board = board.rstrip('_' + board_core.lower())
+            if board.endswith('_' + board_core.lower()):
+                board = board[:-len('_' + board_core.lower())]
             board += '_' + core.lower()
 
     return board 

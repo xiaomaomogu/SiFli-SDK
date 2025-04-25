@@ -703,11 +703,13 @@ def _main():
     if kconfig_file == "proj.conf" and args.board:
         board = args.board
         if board.endswith("_lcpu"):
-            board = board.rstrip("_lcpu")
+            board = board[:-len("_lcpu")]
             core = "lcpu"
-        else:
-            board = board.rstrip("_hcpu")
+        elif board.endswith("_hcpu"):
+            board = board[:-len("_hcpu")]
             core = "hcpu"
+        else:
+            core = "hcpu"    
         
         sdk_root_path = os.environ.get("SIFLI_SDK")
         if not sdk_root_path:
