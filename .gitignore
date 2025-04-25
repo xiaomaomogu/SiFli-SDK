@@ -11,3 +11,5 @@
 .DS_Store
 .idea
 Kconfig.tmp
+.venv
+.DS_Store

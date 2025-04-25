@@ -1,0 +1,27 @@
+build-sdk:
+  stage: build
+  tags:
+    - build
+  script: |
+    . ./export.sh
+    python tools/autotest/build_sdk.py -c=build_config_gcc.yaml -p=gcc
+    echo "SDK构建完成"
+  artifacts:
+    paths:
+      - ci_build_logs
+      - ci_report_logs
+    expire_in: 1 week
+  rules:
+    - if: '$SYNC_GITHUB'
+      when: never
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "api"'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: always
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      when: always
+    - when: never
