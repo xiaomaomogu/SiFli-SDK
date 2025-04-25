@@ -956,9 +956,9 @@ wsock_tcp_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *pb, err_t err)
             }
             // 4. all head in cache now, ensure all data readed
             uint32_t data_head_len = wsock_pkt_len(pws->cache);
-            if (data_head_len > WS_CACHE_SIZE)
+            if (data_head_len >= WS_CACHE_SIZE)
             {
-                printf("should define WS_CACHE_SIZE >= %d\n", data_head_len);
+                printf("should define WS_CACHE_SIZE > %d\n", data_head_len);
                 rt_thread_mdelay(100);
                 RT_ASSERT(0);
             }
@@ -970,6 +970,8 @@ wsock_tcp_recv(void *arg, struct altcp_pcb *pcb, struct pbuf *pb, err_t err)
                 }
                 break;
             }
+            RT_ASSERT(pws->offset < WS_CACHE_SIZE);
+            pws->cache[pws->offset] = 0;
             // 5. got packet, using it
             if (!wsock_controlmsg(pws, pws->cache))
             {
@@ -1058,6 +1060,7 @@ wsock_invoke_app(wsock_state_t *pws, char *pktbuf)
             RT_ASSERT(pws->frag_offset + paylen < WSMSG_MAXSIZE);
             memcpy(&pws->fragments[pws->frag_offset], paybuf, paylen);
             pws->frag_offset += paylen;
+            pws->fragments[pws->frag_offset] = 0;
         }
         if (is_fin)
         {
