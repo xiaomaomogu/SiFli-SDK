@@ -63,7 +63,7 @@ pipeline {
                 stage('common eh-lb563 bt') {
                     steps {
                         bat'''
-                        tools\\autotest\\build.bat example\\bt\\test_example\\project\\common --board eh-lb563_hcpu
+                        tools\\autotest\\build.bat example\\bt\\test_example\\project --board eh-lb563_hcpu
                         '''
                     }
                 }

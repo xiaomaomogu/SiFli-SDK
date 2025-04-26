@@ -84,13 +84,13 @@ after_55x_boards: &after_55x_boards
 
 
 common_projects:
-  - path: example/ble/ams/project/common
+  - path: example/ble/ams/project
     boards: *default_boards
 
-  - path: example/ble/central_and_peripheral/project/common
+  - path: example/ble/central_and_peripheral/project/hcpu
     boards: *default_boards
 
-  - path: example/ble/hid/project/common
+  - path: example/ble/hid/project
     boards: *default_boards
 
   - path: example/ble/multi_connection/project/common
@@ -102,10 +102,10 @@ common_projects:
   - path: example\ble\periodic_adv_sync\project
     boards: *default_boards
 
-  - path: example/ble/peripheral/project/common
+  - path: example/ble/peripheral/project
     boards: *default_boards
 
-  - path: example/ble/peripheral_with_ota/project/common
+  - path: example/ble/peripheral_with_ota/project
     boards:
       # all 52/56 boards using NOR
       - eh-lb561_hcpu
@@ -128,7 +128,7 @@ common_projects:
   - path: example/bt/pan/project
     boards: *bt_boards
 
-  - path: example/bt/test_example/project/common
+  - path: example/bt/test_example/project
     boards: *bt_boards
 
   # - path: example/printer/project
