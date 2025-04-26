@@ -139,7 +139,7 @@ common_projects:
     boards:
       - eh-lb520s
 
-  - path: example/pm/coremark/common/hcpu
+  - path: example/pm/coremark/project/hcpu
     boards: *default_boards
 
   - path: example/multimedia/lvgl/lvgl_v8_demos/project
@@ -252,30 +252,30 @@ common_projects:
   - path: example/get-started/hello_world/rtt/project
     boards: *default_boards
 
-  - path: example/hal_example/project/common
+  - path: example/hal_example/project
     boards: *default_boards
 
   - path: example/rt_driver/project
     boards: *default_boards
 
-  - path: example/uart/project/common
+  - path: example/uart/project
     boards: *default_boards
 
-  - path: example/pm/ble/common/hcpu
+  - path: example/pm/ble/project/hcpu
     boards:
       - eh-lb551_hcpu
       - eh-lb555_hcpu
 
-  - path: example/pm/bt/project/common/hcpu
+  - path: example/pm/bt/project/hcpu
     boards: *bt_boards
 
   - path: example/multicore/rpmsg-lite/project/hcpu
     boards: *multicore_boards
 
-  - path: example/multicore/data_service/common/hcpu
+  - path: example/multicore/data_service/project/hcpu
     boards: *multicore_boards
 
-  - path: example/multicore/ipc_queue/common/hcpu
+  - path: example/multicore/ipc_queue/project/hcpu
     boards: *multicore_boards
 
   - path: example/multimedia/lvgl/watch/project

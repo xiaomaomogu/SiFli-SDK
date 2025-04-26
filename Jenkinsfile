@@ -49,7 +49,7 @@ pipeline {
                 stage('common ec-lb583 hal') {
                     steps {
                         bat'''
-                        tools\\autotest\\build.bat example\\hal_example\\project\\common --board ec-lb583_hcpu
+                        tools\\autotest\\build.bat example\\hal_example\\project --board ec-lb583_hcpu
                         '''
                     }
                 }
