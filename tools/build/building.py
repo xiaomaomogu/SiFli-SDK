@@ -567,6 +567,8 @@ def GetLinkScript(proj_path,board,chip,core):
     CC_TOOLS = os.getenv('RTT_CC')
     link_script=None
     link_script_template=None
+    chip = chip.lower()
+    core = core.lower()
     if CC_TOOLS=='keil' or CC_TOOLS=='gcc':
         if CC_TOOLS=='keil':
             ext='.sct'
@@ -1466,7 +1468,7 @@ def InitBuild(bsp_root, build_dir, board):
                  os.path.join(bsp_root, 'proj.conf')]
 
     # Add chip specific config
-    proj_chip_conf = os.path.join(bsp_root, rtconfig.CHIP + '/' + 'proj.conf')
+    proj_chip_conf = os.path.join(bsp_root, rtconfig.CHIP.lower() + '/' + 'proj.conf')
     if os.path.exists(proj_chip_conf):
         conf_list += [proj_chip_conf]
 
@@ -1492,7 +1494,7 @@ def InitBuild(bsp_root, build_dir, board):
     if os.path.isfile('rtconfig_project.h'):
         shutil.copy('rtconfig_project.h', os.path.join(build_dir, "rtconfig_project.h"))
 
-    src = GetCustomMemMapSrc(bsp_root, build_dir, rtconfig.CHIP, board)
+    src = GetCustomMemMapSrc(bsp_root, build_dir, rtconfig.CHIP.lower(), board)
     if src:
         logging.debug("Copy custom_mem_map.h")
         logging.debug(" from {}".format(src))
