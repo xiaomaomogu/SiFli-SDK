@@ -2764,8 +2764,10 @@ def SifliEnv(BSP_Root = None):
         else:
             cpu='Cortex-M33'
             logging.error("Undefined core, please select BF0_HCPU/BF0_LCPU/BF0_ACPU")
-        rtconfig.CPU=cpu.lower()
-     
+        
+        cpu = cpu.lower()
+        rtconfig.CPU=cpu
+
     if GetDepend('BSP_USING_PC_SIMULATOR'):
         rtconfig.ARCH='sim'
     else:
