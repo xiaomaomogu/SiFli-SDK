@@ -320,6 +320,11 @@ static void merge_all_inv_area_to_one(void)
     }
 }
 
+#if defined(LCD_FB_USING_TWO_COMPRESSED)||defined(LCD_FB_USING_TWO_UNCOMPRESSED)
+void pre_render_start(lv_disp_t *disp)
+{
+}
+#endif /* LCD_FB_USING_TWO_COMPRESSED ||  LCD_FB_USING_TWO_UNCOMPRESSED*/
 
 static void render_start(lv_disp_drv_t *disp_drv)
 {
@@ -438,14 +443,70 @@ static void lcd_flush_new_api(lv_disp_drv_t *disp_drv, const lv_area_t *buf_area
 
 static void render_start(lv_disp_drv_t *disp_drv)
 {
-
-#if defined(LCD_FB_USING_TWO_COMPRESSED)||defined(LCD_FB_USING_TWO_UNCOMPRESSED)
-    switch_draw_buf();
-    update_fb();
-#endif /* LCD_FB_USING_TWO_COMPRESSED ||  LCD_FB_USING_TWO_UNCOMPRESSED*/
-
 }
 
+#if defined(LCD_FB_USING_TWO_COMPRESSED)||defined(LCD_FB_USING_TWO_UNCOMPRESSED)
+static uint8_t use_new_framebuffer;
+
+#if defined(BSP_USING_RAMLESS_LCD)
+void pre_render_start(lv_disp_t *disp)
+{
+    /* Update one framebuffer partially, may cause Tearing effect on RAMLESS LCD,
+       so update whole screen always
+    */
+    disp->inv_p = 1;
+    lv_area_set(&disp->inv_areas[0], 0, 0,
+                lv_disp_get_hor_res(disp) - 1, lv_disp_get_ver_res(disp) - 1);
+    disp->inv_area_joined[0] = 0;
+    use_new_framebuffer = 1;
+}
+
+#else /*!BSP_USING_RAMLESS_LCD*/
+
+void pre_render_start(lv_disp_t *disp)
+{
+    int32_t i;
+    uint32_t inv_percent, pixels = 0;
+
+    for (i = 0; i < (int)disp->inv_p; i++)
+    {
+        if (disp->inv_area_joined[i] == 0)
+        {
+            pixels += lv_area_get_size(&(disp->inv_areas[i]));
+        }
+    }
+
+    inv_percent = pixels * 100 / (lv_disp_get_hor_res(disp) * lv_disp_get_ver_res(disp));
+
+    /*
+        Two LCD framebuffer will be used if invalid area percentage larger than this value,
+        else only one will be used.
+    */
+#define FULL_SCREEN_RENDERING_THRESHOLD   50
+    /*
+        If the percentage of invalid areas is more than 'FULL_SCREEN_RENDERING_THRESHOLD', we considered that
+        the rendering time will be larger than LCD flushing time. And an new
+        PSRAM framebuffer will be actived, and we invalidate whole screen to avoid
+        copy previous PSRAM framebuffer to new one.
+    */
+    if (inv_percent > FULL_SCREEN_RENDERING_THRESHOLD)
+    {
+        /*Invalidate whole screen*/
+        disp->inv_p = 1;
+        lv_area_set(&disp->inv_areas[0], 0, 0,
+                    lv_disp_get_hor_res(disp) - 1, lv_disp_get_ver_res(disp) - 1);
+        disp->inv_area_joined[0] = 0;
+        use_new_framebuffer = 1;
+    }
+    else
+    {
+        use_new_framebuffer = 0;
+    }
+
+
+}
+#endif /*BSP_USING_RAMLESS_LCD*/
+#endif /* LCD_FB_USING_TWO_COMPRESSED ||  LCD_FB_USING_TWO_UNCOMPRESSED*/
 
 
 static void wait_flush_done(lv_disp_drv_t *disp_drv)
@@ -530,6 +591,14 @@ void lcd_flush(lv_disp_drv_t *disp_drv, const lv_area_t *buf_area, lv_color_t *c
     lcd_flushing_disp_drv = disp_drv;
 
 #ifdef BSP_USING_LCD_FRAMEBUFFER
+#if defined(LCD_FB_USING_TWO_COMPRESSED)||defined(LCD_FB_USING_TWO_UNCOMPRESSED)
+    if (use_new_framebuffer)
+    {
+        switch_draw_buf();
+        update_fb();
+        use_new_framebuffer = 0;
+    }
+#endif /* LCD_FB_USING_TWO_COMPRESSED ||  LCD_FB_USING_TWO_UNCOMPRESSED*/
     drv_lcd_fb_write_send(&clip_area, &src_area, (uint8_t *)color_p, lcd_flush_done,
                           disp_drv->draw_buf->flushing_last);
 #else

@@ -235,7 +235,15 @@ static void err_debug(void)
     LOG_E("flush_req=%d,rsp=%d, write_req=%d,rsp=%d",
           drv_lcd_fb.dbg_flush_req, drv_lcd_fb.dbg_flush_rsp,
           drv_lcd_fb.dbg_write_req, drv_lcd_fb.dbg_write_rsp);
-    LOG_E("event=%x", drv_lcd_fb.event.set);
+    LOG_E("event=%x detail:", drv_lcd_fb.event.set);
+#define EVENT_LOG(e) LOG_E(#e "=%d", (0 != (drv_lcd_fb.event.set&(e))))
+
+    EVENT_LOG(EVENT_FB0_LINE_VALID);
+    EVENT_LOG(EVENT_FB0_FLUSH_DONE);
+    EVENT_LOG(EVENT_FB1_LINE_VALID);
+    EVENT_LOG(EVENT_FB1_FLUSH_DONE);
+    EVENT_LOG(EVENT_WRITE_DONE);
+
 }
 #define DRV_LCD_FB_ASSERT(expr) do{if(!(expr)){err_debug();RT_ASSERT(0);}}while(0)
 
@@ -357,15 +365,23 @@ static rt_err_t fb_flush_start(void)
     LCD_AreaDef *p_fb_area = &p_fb->fb.area;
     LCD_AreaDef common_area;/*Relative area of FB will be flushed*/
 
-    LOG_D("\n\nfb_flush_start idx=%d", drv_lcd_fb.flush_fb_idx);
-
+    LOG_D("fb_flush_start");
     rt_base_t level = rt_hw_interrupt_disable();
     if (0 == p_fb->ready)
     {
-        rt_hw_interrupt_enable(level);
-        LOG_D("FB is not ready(%d)", drv_lcd_fb.flush_fb_idx);
-        return RT_EEMPTY;
+        //Flush next one.
+        drv_lcd_fb.flush_fb_idx = (drv_lcd_fb.flush_fb_idx + 1) % drv_lcd_fb.fb_total;
+        p_fb = &drv_lcd_fb.fbs[drv_lcd_fb.flush_fb_idx];
+        win_area = p_fb->fb_clip;
+        p_fb_area = &p_fb->fb.area;
+        if (0 == p_fb->ready)
+        {
+            rt_hw_interrupt_enable(level);
+            LOG_D("Both framebuffers are not ready");
+            return RT_EEMPTY;
+        }
     }
+
 
     if (0 == p_fb->fb_flushing_lcd)
         p_fb->fb_flushing_lcd = 1;
@@ -402,7 +418,8 @@ static rt_err_t fb_flush_start(void)
         SystemView_mark_start(FLUSH_LCD_SYSTEMVIEW_MARK_ID,
                               "window:"AreaString" p_data=%p", AreaParams(&flush_info.window), flush_info.pixel);
 #endif /* PKG_USING_SYSTEMVIEW */
-        LOG_D("fb_flush_start window:"AreaString" fb:"AreaString" p_data=%p",
+        LOG_D("fb_flush_start idx=%d", drv_lcd_fb.flush_fb_idx);
+        LOG_D("window:"AreaString" fb:"AreaString" p_data=%p",
               AreaParams(&flush_info.window), AreaParams(&flush_info.pixel_area), flush_info.pixel);
 
         err = rt_device_control(p_lcd_dev, SF_GRAPHIC_CTRL_LCDC_FLUSH, &flush_info);
@@ -413,7 +430,7 @@ static rt_err_t fb_flush_start(void)
     else
     {
         LOG_D("NoIntersect window:"AreaString" fb:"AreaString" p_data=%p",
-              AreaParams(p_fb_area), AreaParams(p_win_area), p_fb->fb.p_data);
+              AreaParams(p_fb_area), AreaParams(&win_area), p_fb->fb.p_data);
         fb_flush_done(p_lcd_dev, p_fb->fb.p_data);
     }
 
@@ -926,7 +943,9 @@ uint32_t drv_lcd_fb_init(const char *lcd_dev_name)
     {
         rt_device_control(drv_lcd_fb.p_lcd_dev, RTGRAPHIC_CTRL_GET_INFO, &drv_lcd_fb.lcd_info);
         uint16_t interval_lines;
-        interval_lines = 10;
+        /* If the LCD interrupt interval is too long, it will lead to a lot of idle waiting.
+         * Therefore, change it back to trigger an interrupt every 10 lines.*/
+        interval_lines = 10;//drv_lcd_fb.lcd_info.height >> 3;
         if (interval_lines < 1) interval_lines = 1;
         rt_device_control(drv_lcd_fb.p_lcd_dev, RTGRAPHIC_CTRL_IRQ_INTERVAL_LINE, &interval_lines);
     }
@@ -999,12 +1018,6 @@ uint32_t drv_lcd_fb_set(lcd_fb_desc_t *fb_desc)
 
         //Set write idx to this fb
         drv_lcd_fb.write_fb_idx = drv_lcd_fb.fb_total - 1;
-        //Set flush fb idx to this fb too if it's not working.
-        if (0 == drv_lcd_fb.fbs[drv_lcd_fb.flush_fb_idx].fb_flushing_lcd)
-        {
-            drv_lcd_fb.flush_fb_idx = drv_lcd_fb.write_fb_idx;
-            LOG_D("drv_lcd_fb_set flush_fb_idx: %d", drv_lcd_fb.flush_fb_idx);
-        }
     }
     rt_hw_interrupt_enable(level);
 
@@ -1090,7 +1103,7 @@ rt_err_t drv_lcd_fb_write_send(LCD_AreaDef *write_area, LCD_AreaDef *src_area, c
     {
         rt_err_t err;
 
-        LOG_D("\n\nWrite fb idx: %d", drv_lcd_fb.write_fb_idx);
+        LOG_D("\n\nWrite fb idx: %d, send=%d", drv_lcd_fb.write_fb_idx, send);
         LOG_D("Write area:"AreaString, AreaParams(write_area));
         LOG_D("Src area:"AreaString" src=%p", AreaParams(src_area), src);
         LOG_D("Common area:"AreaString, AreaParams(&common_area));
