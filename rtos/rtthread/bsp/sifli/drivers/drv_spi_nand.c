@@ -747,9 +747,7 @@ static rt_err_t _nand_readpage(struct rt_mtd_nand_device *device,
     uint32_t base = (uint32_t)device->parent.user_data;
     int res;
 
-#if defined(RT_DFS_ELM_DHARA_ENABLED)
     page += device->block_start * device->pages_per_block;
-#endif
 
     //LOG_I("readpage:%d", page);
 
@@ -801,9 +799,7 @@ static rt_err_t _nand_readpage_with_offset(struct rt_mtd_nand_device *device,
     uint32_t base = (uint32_t)device->parent.user_data;
     int res;
 
-#if defined(RT_DFS_ELM_DHARA_ENABLED)
     page += device->block_start * device->pages_per_block;
-#endif
 
     if (offset + data_len > nand_pagesize)
     {
@@ -829,9 +825,7 @@ static rt_err_t _nand_writepage(struct rt_mtd_nand_device *device,
     uint32_t base = (uint32_t)device->parent.user_data;
     int res;
 
-#if defined(RT_DFS_ELM_DHARA_ENABLED)
     page += device->block_start * device->pages_per_block;
-#endif
 
     //LOG_I("writepage:%d", page);
 
@@ -857,9 +851,7 @@ static rt_err_t _nand_eraseblk(struct rt_mtd_nand_device *device, rt_uint32_t bl
     uint32_t base = (uint32_t)device->parent.user_data;
     int res;
 
-#if defined(RT_DFS_ELM_DHARA_ENABLED)
     block += device->block_start;
-#endif
 
     //LOG_I("eraseblk:%d", block);
 
