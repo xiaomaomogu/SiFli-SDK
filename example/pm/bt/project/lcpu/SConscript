@@ -12,7 +12,7 @@ for d in list:
         objs = objs + SConscript(os.path.join(d, 'SConscript'))
 
 # Add Source
-objs.extend(SConscript(os.path.join(cwd,  '../../../src/lcpu/SConscript'), variant_dir="main", duplicate=0))
+objs.extend(SConscript(os.path.join(cwd,  '../../src/lcpu/SConscript'), variant_dir="main", duplicate=0))
 
 
 # Add SDK
