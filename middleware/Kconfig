@@ -84,6 +84,9 @@ menu "Sifli middleware"
             depends on BF0_LCPU
             bool "Disable low power timer in PM"
             default n
+        config GUI_APP_PM
+            bool "Use Gui_App_Pm"
+            default n    
     endif
     menuconfig BSP_USING_DATA_SVC
         bool "Enable Data service"
