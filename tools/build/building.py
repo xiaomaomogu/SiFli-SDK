@@ -2171,7 +2171,7 @@ def SifliMsvcEnv(cpu):
     #    LFLAGS += ''
     rtconfig.CFLAGS += ' /MT'
     
-    rtconfig.CFLAGS += ' /Zi /Od /W3 /WL /D_Win32 /wd4828 /FS /utf-8 /nologo '        
+    rtconfig.CFLAGS += ' /Zi /Od /W3 /WL /D_Win32 /wd4828 /FS /utf-8 /nologo /we4013'        
     rtconfig.LFLAGS += ' /SUBSYSTEM:CONSOLE /MACHINE:X86 /INCREMENTAL:NO /nologo '
     rtconfig.LFLAGS += '/PDB:"{}\\{}.pdb" /DEBUG /ignore:4099 '.format(rtconfig.OUTPUT_DIR, rtconfig.TARGET_NAME)
 
