@@ -20,3 +20,4 @@ rich
 psutil
 scons
 esp-idf-kconfig
+pycryptodome
