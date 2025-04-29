@@ -3,6 +3,7 @@
 #include "mem_section.h"
 
 #define FRAME_END_LEN       32      //每次刷新所需帧数
+
 /// The image drawing mode.
 typedef enum
 {
@@ -234,7 +235,28 @@ L1_RET_CODE_SECT(epd_codes,  void epd_wave_table_convert_i1o2(uint8_t *output_pi
 
 
 #endif /* MIXED_REFRESH_METHODS */
+}
 
+L1_RET_CODE_SECT(epd_codes,  void epd_wave_table_convert_i4o2(uint8_t *output_pic_a2,
+                 const uint8_t *input_old_pic_a4,
+                 const uint8_t *input_new_pic_a4,
+                 uint32_t input_bytes, uint8_t frame))
+{
+    uint8_t idx, ret, oldret;
 
+    for (int j = 0, i = 0; i < input_bytes; i+=2)
+    {
+        uint8_t ret1 = input_new_pic_a4[i];
+        uint8_t ret2 = input_new_pic_a4[i + 1];
 
+        uint8_t high4_1 = (ret1 >> 6) & 0x03;
+        uint8_t low4_1 = (ret1 >> 2) & 0x03;
+
+        uint8_t high4_2 = (ret2 >> 6) & 0x03;
+        uint8_t low4_2 = (ret2 >> 2) & 0x03;
+
+        uint8_t idx = (low4_1 << 6) | (high4_1 << 4) | (low4_2 << 2) | high4_2;
+
+        output_pic_a2[j++] = wave_end_table[idx][frame];
+    }
 }

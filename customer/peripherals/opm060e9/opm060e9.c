@@ -64,7 +64,6 @@
 
 #define DISPLAY_LINE_CLOCKS   (LCD_HOR_RES_MAX/4)     //每列刷新所需次数，362*4像素
 #define DISPLAY_ROWS   LCD_VER_RES_MAX
-#define EPD_ARRAY  LCD_HOR_RES_MAX*LCD_VER_RES_MAX/8   // 全屏所需字节量
 
 
 
@@ -177,19 +176,21 @@ static void LCD_SetRegion(LCDC_HandleTypeDef *hlcdc, uint16_t Xpos0, uint16_t Yp
 
 static uint32_t wait_lcd_ticks;
 
-L1_RET_CODE_SECT(epd_codes, void epd_load_and_send_pic1(LCDC_HandleTypeDef *hlcdc, const uint8_t *old_pic_a1, const uint8_t *new_pic_a1, uint8_t frame))
+
+L1_RET_CODE_SECT(epd_codes, void epd_load_and_send_pic(LCDC_HandleTypeDef *hlcdc, const uint8_t *old_pic, const uint8_t *new_pic, uint32_t pic_bpp, uint8_t frame))
 {
 
     uint8_t *p_lcdc_input = (uint8_t *) &lcdc_input_buffer[lcdc_input_idx][0];
 
-
-    epd_wave_table_convert_i1o2(p_lcdc_input, old_pic_a1, new_pic_a1, DISPLAY_LINE_CLOCKS / 2, frame);
+    if(1 == pic_bpp)
+    epd_wave_table_convert_i1o2(p_lcdc_input, old_pic, new_pic, LCD_HOR_RES_MAX/8, frame);
+    else if(4 == pic_bpp)
+    epd_wave_table_convert_i4o2(p_lcdc_input, old_pic, new_pic, LCD_HOR_RES_MAX/2, frame);
 
     //Wait previous LCDC done.
     uint32_t start_tick = HAL_DBG_DWT_GetCycles();
     while (hlcdc->Instance->STATUS & LCD_IF_STATUS_LCD_BUSY) {;}
     wait_lcd_ticks += HAL_GetElapsedTick(start_tick, HAL_DBG_DWT_GetCycles());
-
 
     EPD_CPV_L_hs();
     EPD_OE_L_hs();
@@ -211,13 +212,11 @@ L1_RET_CODE_SECT(epd_codes, void epd_load_and_send_pic1(LCDC_HandleTypeDef *hlcd
     lcdc_input_idx = !lcdc_input_idx;
 }
 
-
-
 L1_RET_CODE_SECT(epd_codes, static void LCD_WriteMultiplePixels(LCDC_HandleTypeDef *hlcdc, const uint8_t *RGBCode, uint16_t Xpos0, uint16_t Ypos0, uint16_t Xpos1, uint16_t Ypos1))
 {
-    unsigned char frame;
-    unsigned int line;
-    unsigned char *ptrnext;
+    uint8_t frame;
+    uint32_t line, pic_bpp, line_bytes, frame_bytes;
+    uint8_t *ptrnext;
     //波形帧数量，用于局刷和全刷控制
     unsigned int frame_times = 0;
 #ifdef MIXED_REFRESH_METHODS
@@ -233,10 +232,17 @@ L1_RET_CODE_SECT(epd_codes, static void LCD_WriteMultiplePixels(LCDC_HandleTypeD
     oedtps_vcom_enable();
     LCD_DRIVER_DELAY_MS(10);
 
-
-
     LOG_I("LCD_WriteMultiplePixels ColorMode=%d", hlcdc->Layer[HAL_LCDC_LAYER_DEFAULT].data_format);
 
+    if (hlcdc->Layer[HAL_LCDC_LAYER_DEFAULT].data_format == LCDC_PIXEL_FORMAT_MONO)
+        pic_bpp = 1;
+    else if (hlcdc->Layer[HAL_LCDC_LAYER_DEFAULT].data_format == LCDC_PIXEL_FORMAT_A4)
+        pic_bpp = 4;
+    else
+        RT_ASSERT(0);
+    line_bytes = LCD_HOR_RES_MAX/8*pic_bpp;
+    frame_bytes = line_bytes * DISPLAY_ROWS;
+  
     frame_times = epd_wave_table_start_flush();
     wait_lcd_ticks = 0;
     EPD_GMODE_H_hs();
@@ -267,16 +273,17 @@ L1_RET_CODE_SECT(epd_codes, static void LCD_WriteMultiplePixels(LCDC_HandleTypeD
         EPD_OE_H_hs();
         EPD_CPV_H_hs();
 
-
+      
         for (line = 0; line < DISPLAY_ROWS; line++)                 //共有DISPLAY_ROWS列数据
         {
-            epd_load_and_send_pic1(hlcdc, old_ptr + (line * DISPLAY_LINE_CLOCKS / 2), RGBCode + (line * DISPLAY_LINE_CLOCKS / 2), frame); //(line*DISPLAY_LINE_CLOCKS/2)传完一列数据后传下一列，一列数据有
+            epd_load_and_send_pic(hlcdc, old_ptr + (line * line_bytes), RGBCode + (line * line_bytes), pic_bpp, frame); //传完一列数据后传下一列，一列数据有
         }
-        epd_load_and_send_pic1(hlcdc, old_ptr + ((line - 1) * DISPLAY_LINE_CLOCKS / 2), RGBCode + ((line - 1) * DISPLAY_LINE_CLOCKS / 2), frame); //最后一行还需GATE CLK,故再传一行没用数据
+        epd_load_and_send_pic(hlcdc, old_ptr + ((line - 1) * line_bytes), RGBCode + ((line - 1) * line_bytes), pic_bpp, frame); //最后一行还需GATE CLK,故再传一行没用数据
 
-        //Wait previous LCDC done.
+        
+
+
         while (hlcdc->Instance->STATUS & LCD_IF_STATUS_LCD_BUSY) {;}
-
         EPD_CPV_L_hs();
         HAL_Delay_us(1);
         EPD_OE_L_hs();
@@ -295,7 +302,7 @@ L1_RET_CODE_SECT(epd_codes, static void LCD_WriteMultiplePixels(LCDC_HandleTypeD
     oedtps_source_gate_disable();
 #ifdef MIXED_REFRESH_METHODS
     extern void *sifli_memcpy(void *dst, const void *src, rt_ubase_t count);
-    sifli_memcpy(old_ptr, RGBCode, EPD_ARRAY);
+    sifli_memcpy(old_ptr, RGBCode, frame_bytes);
 #endif /* MIXED_REFRESH_METHODS */
     LOG_I("Cost time=%d wait_lcd=%d(us)\r\n", rt_tick_get() - start_tick, wait_lcd_ticks / 240);
     // __enable_irq();

@@ -173,6 +173,7 @@ HAL_LCDC_PixelFormat rt_lcd_format_to_hal_lcd_format(uint16_t rt_color_format)
     {
     case RTGRAPHIC_PIXEL_FORMAT_MONO:
         return LCDC_PIXEL_FORMAT_MONO;
+
     case RTGRAPHIC_PIXEL_FORMAT_RGB332:
         return LCDC_PIXEL_FORMAT_RGB332;
     case RTGRAPHIC_PIXEL_FORMAT_RGB565:
@@ -186,9 +187,10 @@ HAL_LCDC_PixelFormat rt_lcd_format_to_hal_lcd_format(uint16_t rt_color_format)
     case RTGRAPHIC_PIXEL_FORMAT_ARGB565:
         return LCDC_PIXEL_FORMAT_ARGB565;
 
+    case RTGRAPHIC_PIXEL_FORMAT_GRAY4:
+        return LCDC_PIXEL_FORMAT_A4;
     case RTGRAPHIC_PIXEL_FORMAT_A8:
         return LCDC_PIXEL_FORMAT_A8;
-
     case RTGRAPHIC_PIXEL_FORMAT_L8:
         return LCDC_PIXEL_FORMAT_L8;
 
