@@ -73,8 +73,6 @@ static uint8_t dfu_key1[DFU_KEY_SIZE];
 
 static flash_read_func secboot_flash_read;
 
-#ifdef SECBOOT_USING_APP_IMG_SIG_VERIFIY
-
 uint8_t sig_pub_key[DFU_SIG_KEY_SIZE] =
 {
     0x30, 0x82, 0x01, 0x22, 0x30, 0x0D, 0x06, 0x09, 0x2A, 0x86, 0x48, 0x86,
@@ -110,6 +108,7 @@ __WEAK uint8_t *sifli_get_sig_pub_key(void)
     return sig_pub_key;
 }
 
+#ifdef SECBOOT_USING_APP_IMG_SIG_VERIFIY
 /* out buf size must more than 32 byte */
 static int hash_calculate(uint8_t *in, uint32_t in_size, uint8_t *out, uint8_t algo)
 {
@@ -479,6 +478,8 @@ void dfu_boot_img_in_flash(int flashid)
                 }
 #endif /* SECBOOT_USING_APP_IMG_SIG_VERIFIY */
 
+                boot_precheck();
+
                 run_img(dest);
             }
             else if (coreid == CORE_BOOT)
@@ -491,9 +492,178 @@ void dfu_boot_img_in_flash(int flashid)
     }
 }
 
+int32_t boot_get_uid(uint8_t *uid, uint32_t len)
+{
+    int32_t i;
+
+    if (len < DFU_UID_SIZE)
+    {
+        return -1;
+    }
+
+    i = HAL_EFUSE_Read(0, uid, DFU_UID_SIZE);
+    if (i < DFU_UID_SIZE)
+    {
+        return -2;
+    }
+
+    return 0;
+}
+
+__WEAK int32_t boot_read_sig(uint8_t *sig, uint32_t len)
+{
+    int32_t i;
+
+    if (len < DFU_SIG_SIZE)
+    {
+        return -1;
+    }
+
+    HAL_ASSERT(secboot_flash_read);
+
+#ifdef BOOT_SIG_REGION_START_ADDR
+    i = secboot_flash_read((uint32_t)BOOT_SIG_REGION_START_ADDR, sig, DFU_SIG_SIZE);
+#else
+    i = 0;
+#endif /* BOOT_SIG_REGION_START_ADDR */
+    if (i < DFU_SIG_SIZE)
+    {
+        return -2;
+    }
+
+    return 0;
+}
+
+int32_t boot_sha256_calculate(uint8_t *in, uint32_t in_size, uint8_t *uid, uint32_t uid_size, uint8_t *out, uint32_t out_size)
+{
+#ifndef HAL_HASH_MODULE_ENABLED
+    static mbedtls_sha256_context ctx;
+#endif /* !HAL_HASH_MODULE_ENABLED */
+    int last, i, j;
+    uint32_t ex_data_size = 0;
+    uint8_t *ex_data = NULL;
+    uint8_t *blk = NULL;
+    uint32_t blk_size;
+    static uint32_t blk_buf[SPLIT_THRESHOLD / sizeof(uint32_t)];
+    int32_t remaining_size;
+
+    if (!in || !in_size || !out || (out_size < 32))
+        return -1;
+
+    if (uid)
+    {
+        ex_data_size = uid_size;
+        ex_data = uid;
+    }
+
+#ifdef HAL_HASH_MODULE_ENABLED
+    HAL_HASH_reset();
+    HAL_HASH_init(NULL, algo, 0);
+#else
+    mbedtls_sha256_init(&ctx);
+    mbedtls_sha256_starts(&ctx, 0);
+#endif /* HAL_HASH_MODULE_ENABLED */
+
+    i = 0;
+    remaining_size = (in_size + ex_data_size);
+    while (remaining_size > 0)
+    {
+        if (SPLIT_THRESHOLD >= remaining_size)
+        {
+            /* last block */
+            last = 1;
+            blk_size = remaining_size;
+            remaining_size = 0;
+        }
+        else
+        {
+            last = 0;
+            blk_size = SPLIT_THRESHOLD;
+            remaining_size -= SPLIT_THRESHOLD;
+        }
+
+#ifdef HAL_HASH_MODULE_ENABLED
+        if (i > 0)
+        {
+            HAL_HASH_reset();
+            HAL_HASH_init((uint32_t *)out, algo, last ? i : 0);
+        }
+#endif /* HAL_HASH_MODULE_ENABLED */
+
+        if ((i + blk_size) <= in_size)
+        {
+            /* use all data from in buf */
+            blk = &in[i];
+        }
+        else
+        {
+            /* combine in and ex_data into blk */
+            blk = (uint8_t *)blk_buf;
+            j = 0;
+            if (i < in_size)
+            {
+                j = in_size - i;
+                /* copy rest data from in */
+                memcpy((void *)blk_buf, (void *)&in[i], j);
+            }
+            /* copy from ex_data*/
+            memcpy((void *)((uint32_t)blk_buf + j), (void *)&ex_data[i + j - in_size], blk_size - j);
+        }
+#ifdef HAL_HASH_MODULE_ENABLED
+        HAL_HASH_run(blk, blk_size, last);
+        HAL_HASH_result(out);
+#else
+        mbedtls_sha256_update(&ctx, blk, blk_size);
+#endif /* HAL_HASH_MODULE_ENABLED */
+        i += blk_size;
+    }
+
+#ifndef HAL_HASH_MODULE_ENABLED
+    // mbedtls_sha256_update(&ctx, in, in_size);
+    mbedtls_sha256_finish(&ctx, out);
+#endif /* ！HAL_HASH_MODULE_ENABLED */
+
+    return 0;
+}
 
 
+__WEAK void boot_precheck(void)
+{
+#if 0
+    int32_t r;
+    uint8_t uid[DFU_UID_SIZE] = {0};
+    uint8_t img_hash[32] = {0};
+    uint8_t img_hash_sig[DFU_SIG_SIZE];
+    mbedtls_pk_context pk;
+    uint8_t *sig_pubkey;
 
+    r = boot_get_uid(uid, DFU_UID_SIZE);
+    HAL_ASSERT(0 == r);
+    /* calculate sha256 by UID */
+    r = boot_sha256_calculate((uint8_t *)uid, DFU_UID_SIZE, NULL, 0, img_hash, 32);
+    HAL_ASSERT(0 == r);
+    r = boot_read_sig(img_hash_sig, DFU_SIG_SIZE);
+    HAL_ASSERT(0 == r);
+
+    sig_pubkey = sifli_get_sig_pub_key();
+    HAL_ASSERT(sig_pubkey);
+
+    mbedtls_pk_init(&pk);
+    if (mbedtls_pk_parse_public_key(&pk, sig_pubkey, DFU_SIG_KEY_SIZE))
+    {
+        printf("mbedtls parse public key failed!\n");
+        while (1);
+    }
+
+    mbedtls_rsa_set_padding((mbedtls_rsa_context *)pk.pk_ctx, MBEDTLS_RSA_PKCS_V15, MBEDTLS_MD_SHA256);
+    /* verify the signature */
+    if (mbedtls_pk_verify(&pk, MBEDTLS_MD_SHA256, img_hash, DFU_IMG_HASH_SIZE, img_hash_sig, DFU_SIG_SIZE))
+    {
+        printf("signature verification failed!\n");
+        while (1);
+    }
+#endif
+}
 
 
 /************************ (C) COPYRIGHT Sifli Technology *******END OF FILE****/
