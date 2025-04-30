@@ -106,6 +106,7 @@ typedef struct
 typedef struct
 {
     char        header[8];          // 'siflezip'
+    uint32_t    max_frame_size;
     uint32_t    duration_seconds;
     int         fps;
     uint32_t    width;

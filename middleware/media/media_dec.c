@@ -202,6 +202,14 @@ int ezip_video_cache_init(ffmpeg_handle thiz)
 
     for (int i = 0; i < VIDEO_BUFFER_CAPACITY; i++)
     {
+        if (2 == thiz->is_sifli_ezip_memdia && thiz->ezip_heaer.max_frame_size > 0)
+        {
+            uint8_t *p;
+            thiz->ezip_video_cache.cache[i].buffer_size = thiz->ezip_heaer.max_frame_size;
+            p = thiz->cfg.mem_malloc(thiz->ezip_heaer.max_frame_size);
+            thiz->ezip_video_cache.cache[i].buffer = p;
+            RT_ASSERT(p);
+        }
         rt_slist_append(&thiz->ezip_video_cache.empty_video_slist, &thiz->ezip_video_cache.cache[i].snode);
     }
     return 0;

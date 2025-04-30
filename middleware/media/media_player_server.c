@@ -19,7 +19,8 @@
 #define FFMPEG_OPEN_AYNC        1
 #define refcount                1
 
-#define SIFLI_MEDIA_MAGIC       "siflizip"
+#define SIFLI_MEDIA_MAGIC1      "siflizip"
+#define SIFLI_MEDIA_MAGIC2      "siflizi2"
 
 #undef lock
 #undef unlock
@@ -1242,11 +1243,17 @@ static void ezip_read_thread(void *p)
         {
             if (thiz->is_nand)
             {
-                ezip_flash_seek(thiz, sizeof(ezip_media_t), SEEK_SET);
+                if (thiz->is_sifli_ezip_memdia == 1)
+                    ezip_flash_seek(thiz, sizeof(ezip_media_t) - 4, SEEK_SET);
+                else
+                    ezip_flash_seek(thiz, sizeof(ezip_media_t), SEEK_SET);
             }
             else
             {
-                lseek(thiz->ezip_fd, sizeof(ezip_media_t), SEEK_SET);
+                if (thiz->is_sifli_ezip_memdia == 1)
+                    lseek(thiz->ezip_fd, sizeof(ezip_media_t) - 4, SEEK_SET);
+                else
+                    lseek(thiz->ezip_fd, sizeof(ezip_media_t), SEEK_SET);
             }
             thiz->frame_index = 0;
             while (1)
@@ -1379,11 +1386,11 @@ static void ezip_read_thread(void *p)
             {
                 while (thiz->is_ok)
                 {
-                    if (!ezip_video_need_decode(thiz))
+                    if (ezip_video_need_decode(thiz))
                     {
-                        os_delay(5);
-                        continue;
+                        break;
                     }
+                    os_delay(5);
                 }
             }
             ezip_video_decode(thiz, packet.data_len, packet.padding_size);
@@ -1433,10 +1440,19 @@ static bool demux_sifli_ezip_media(ffmpeg_handle thiz)
     int fd;
     thiz->ezip_fd = -1;
     memset(&thiz->ezip_header, 0, sizeof(thiz->ezip_header));
+
     if (thiz->is_nand)
     {
         thiz->ezip_fd = 0;
-        ezip_flash_read(thiz, &thiz->ezip_header, sizeof(thiz->ezip_header));
+        ezip_flash_read(thiz, &thiz->ezip_header.header, 8);
+        if (!memcmp(SIFLI_MEDIA_MAGIC1, thiz->ezip_header.header, 8))
+        {
+            ezip_flash_read(thiz, &thiz->ezip_header.duration_seconds, sizeof(thiz->ezip_header) - 8 - 4); //old tools no max_frame_size
+        }
+        else if (!memcmp(SIFLI_MEDIA_MAGIC2, thiz->ezip_header.header, 8))
+        {
+            ezip_flash_read(thiz, &thiz->ezip_header.max_frame_size, sizeof(thiz->ezip_header) - 8);       
+        }
     }
     else
     {
@@ -1445,13 +1461,30 @@ static bool demux_sifli_ezip_media(ffmpeg_handle thiz)
         thiz->ezip_fd = fd;
         if (fd < 0)
             return false;
-        read(fd, &thiz->ezip_header, sizeof(thiz->ezip_header));
+        read(fd, &thiz->ezip_header.header, 8);
+        if (!memcmp(SIFLI_MEDIA_MAGIC1, thiz->ezip_header.header, 8))
+        {
+            read(fd, &thiz->ezip_header.duration_seconds, sizeof(thiz->ezip_header) - 8 - 4); //old tools no max_frame_size
+        }
+        else if (!memcmp(SIFLI_MEDIA_MAGIC2, thiz->ezip_header.header, 8))
+        {
+            read(fd, &thiz->ezip_header.max_frame_size, sizeof(thiz->ezip_header) - 8);
+        }
 #else
         return false;
 #endif
     }
-
-    if (memcmp(SIFLI_MEDIA_MAGIC, thiz->ezip_header.header, 8))
+    thiz->is_sifli_ezip_memdia = 0;
+    if (!memcmp(SIFLI_MEDIA_MAGIC1, thiz->ezip_header.header, 8))
+    {
+        thiz->is_sifli_ezip_memdia = 1;
+        
+    }
+    else if (!memcmp(SIFLI_MEDIA_MAGIC2, thiz->ezip_header.header, 8))
+    {
+        thiz->is_sifli_ezip_memdia = 2;
+    }
+    else
     {
         if (thiz->is_nand)
         {
@@ -1482,7 +1515,6 @@ static bool demux_sifli_ezip_media(ffmpeg_handle thiz)
     thiz->period_float = 1000.0f / thiz->ezip_header.fps;
     thiz->total_time_in_seconds = thiz->ezip_header.duration_seconds;
 
-    thiz->is_sifli_ezip_memdia = 1;
     thiz->gpu_pic_fmt = e_sifli_fmt_ezip;
     thiz->is_ok = 1;
     thiz->ezip_header.audio_codec[3] = 0;
@@ -1809,8 +1841,16 @@ uint8_t *ffmpeg_get_first_ezip(const char *filename, uint32_t *w, uint32_t *h, u
     int fd = open(filename, O_RDONLY | O_BINARY);
     if (fd < 0)
         return NULL;
-    read(fd, &ezip_header, sizeof(ezip_header));
-    if (memcmp(SIFLI_MEDIA_MAGIC, ezip_header.header, 8))
+    read(fd, &ezip_header, 8);
+    if (!memcmp(SIFLI_MEDIA_MAGIC1, ezip_header.header, 8))
+    {
+        read(fd, &ezip_header.duration_seconds, sizeof(ezip_header) - 8 - 4); //old tools no max_frame_size
+    }
+    else if (!memcmp(SIFLI_MEDIA_MAGIC2, ezip_header.header, 8))
+    {
+        read(fd, &ezip_header.max_frame_size, sizeof(ezip_header) - 8);
+    }    
+    else
     {
         close(fd);
         return false;
@@ -1861,10 +1901,19 @@ uint8_t *ffmpeg_get_first_ezip_in_nand(const char *nand_address, uint32_t nand_s
     uint8_t *ezip = NULL;
     ezip_media_t ezip_header = {0};
 
-    lv_img_decode_flash_read((uint32_t)nand_address + offset, (uint8_t *)&ezip_header, sizeof(ezip_header));
-    offset += sizeof(ezip_header);
-
-    if (memcmp(SIFLI_MEDIA_MAGIC, ezip_header.header, 8))
+    lv_img_decode_flash_read((uint32_t)nand_address + offset, (uint8_t *)&ezip_header, 8);
+    offset += 8;
+    if (!memcmp(SIFLI_MEDIA_MAGIC1, ezip_header.header, 8))
+    {
+        lv_img_decode_flash_read((uint32_t)nand_address + offset, &ezip_header.duration_seconds, sizeof(ezip_header) - 8 - 4); //old tools no max_frame_size
+        offset += sizeof(ezip_header) - 8 - 4;
+    }
+    else if (!memcmp(SIFLI_MEDIA_MAGIC2, ezip_header.header, 8))
+    {
+        lv_img_decode_flash_read((uint32_t)nand_address + offset, &ezip_header.max_frame_size, sizeof(ezip_header) - 8);
+        offset += sizeof(ezip_header) - 8;
+    }
+    else
     {
         return false;
     }
