@@ -10,12 +10,19 @@
 
 #if LV_USE_DEMO_BENCHMARK
 
-#if LV_FONT_MONTSERRAT_14 == 0
-    #error "LV_FONT_MONTSERRAT_14 is required for lv_demo_benchmark. Enable it in lv_conf.h."
-#endif
+#if LV_USE_TINY_TTF
+    #define benchmark_font14  lv_font_ubuntu_14
+    #define benchmark_font24  lv_font_ubuntu_24
+#else
+    #if LV_FONT_MONTSERRAT_14 == 0
+        #error "LV_FONT_MONTSERRAT_14 is required for lv_demo_benchmark. Enable it in lv_conf.h."
+    #endif
 
-#if LV_FONT_MONTSERRAT_24 == 0
-    #error "LV_FONT_MONTSERRAT_24 is required for lv_demo_benchmark. Enable it in lv_conf.h."
+    #if LV_FONT_MONTSERRAT_24 == 0
+        #error "LV_FONT_MONTSERRAT_24 is required for lv_demo_benchmark. Enable it in lv_conf.h."
+    #endif
+    #define benchmark_font14  &lv_font_montserrat_14
+    #define benchmark_font24  &lv_font_montserrat_24
 #endif
 
 #if LV_USE_DEMO_WIDGETS == 0
@@ -807,12 +814,12 @@ static lv_obj_t *card_create(void)
 
     child = lv_label_create(panel);
     lv_label_set_text(child, "John Smith");
-    lv_obj_set_style_text_font(child, &lv_font_montserrat_24, 0);
+    lv_obj_set_style_text_font(child, benchmark_font24, 0);
     lv_obj_set_pos(child, 100, 0);
 
     child = lv_label_create(panel);
     lv_label_set_text(child, "A DIY enthusiast");
-    lv_obj_set_style_text_font(child, &lv_font_montserrat_14, 0);
+    lv_obj_set_style_text_font(child, benchmark_font14, 0);
     lv_obj_set_pos(child, 100, 30);
 
     child = lv_button_create(panel);

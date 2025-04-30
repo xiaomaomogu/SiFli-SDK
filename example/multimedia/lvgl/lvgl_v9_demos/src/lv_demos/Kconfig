@@ -18,7 +18,7 @@ if LV_USE_DEMO
 		config LV_USE_DEMO_BENCHMARK
 			bool "Benchmark your system"
 			default n
-			depends on LV_FONT_MONTSERRAT_14 && LV_FONT_MONTSERRAT_24 && LV_USE_DEMO_WIDGETS
+			depends on LV_USE_DEMO_WIDGETS
 		config LV_USE_DEMO_RENDER
 			bool "Render test for each primitives. Requires at least 480x272 display"
 			default n

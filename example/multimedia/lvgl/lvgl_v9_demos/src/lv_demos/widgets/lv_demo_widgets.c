@@ -126,12 +126,17 @@ void lv_demo_widgets(void)
     if (disp_size == DISP_LARGE)
     {
         tab_h = 70;
-#if LV_FONT_MONTSERRAT_24
+#if LV_USE_TINY_TTF
+        font_large     = lv_font_ubuntu_24;
+#elif LV_FONT_MONTSERRAT_24
         font_large     = &lv_font_montserrat_24;
 #else
         LV_LOG_WARN("LV_FONT_MONTSERRAT_24 is not enabled for the widgets demo. Using LV_FONT_DEFAULT instead.");
 #endif
-#if LV_FONT_MONTSERRAT_16
+
+#if LV_USE_TINY_TTF
+        font_normal     = lv_font_ubuntu_16;
+#elif LV_FONT_MONTSERRAT_16
         font_normal    = &lv_font_montserrat_16;
 #else
         LV_LOG_WARN("LV_FONT_MONTSERRAT_16 is not enabled for the widgets demo. Using LV_FONT_DEFAULT instead.");
@@ -140,12 +145,16 @@ void lv_demo_widgets(void)
     else if (disp_size == DISP_MEDIUM)
     {
         tab_h = 45;
-#if LV_FONT_MONTSERRAT_20
+#if LV_USE_TINY_TTF
+        font_large     = lv_font_ubuntu_20;
+#elif LV_FONT_MONTSERRAT_20
         font_large     = &lv_font_montserrat_20;
 #else
         LV_LOG_WARN("LV_FONT_MONTSERRAT_20 is not enabled for the widgets demo. Using LV_FONT_DEFAULT instead.");
 #endif
-#if LV_FONT_MONTSERRAT_14
+#if LV_USE_TINY_TTF
+        font_normal     = lv_font_ubuntu_14;
+#elif LV_FONT_MONTSERRAT_14
         font_normal    = &lv_font_montserrat_14;
 #else
         LV_LOG_WARN("LV_FONT_MONTSERRAT_14 is not enabled for the widgets demo. Using LV_FONT_DEFAULT instead.");
@@ -154,12 +163,16 @@ void lv_demo_widgets(void)
     else     /* disp_size == DISP_SMALL */
     {
         tab_h = 45;
-#if LV_FONT_MONTSERRAT_18
+#if LV_USE_TINY_TTF
+        font_large     = lv_font_ubuntu_18;
+#elif LV_FONT_MONTSERRAT_18
         font_large     = &lv_font_montserrat_18;
 #else
         LV_LOG_WARN("LV_FONT_MONTSERRAT_18 is not enabled for the widgets demo. Using LV_FONT_DEFAULT instead.");
 #endif
-#if LV_FONT_MONTSERRAT_12
+#if LV_USE_TINY_TTF
+        font_normal     = lv_font_ubuntu_12;
+#elif LV_FONT_MONTSERRAT_12
         font_normal    = &lv_font_montserrat_12;
 #else
         LV_LOG_WARN("LV_FONT_MONTSERRAT_12 is not enabled for the widgets demo. Using LV_FONT_DEFAULT instead.");

@@ -25,6 +25,9 @@ if not GetDepend('DISABLE_LVGL_V8') or not GetDepend('DISABLE_LVGL_V9'):
     if GetDepend('PKG_USING_LITTLEVGL2RTT'):
         if GetDepend('DISABLE_LVGL_V9'):
             objs = objs + SConscript(os.path.join('lvsf', 'SConscript'))
+        else:
+            # Add lvsf fonts
+            objs = objs + SConscript(os.path.join('lvsf_font_v9', 'SConscript'))
 
         if GetDepend('LCD_SDL2'):
             objs = objs + SConscript(os.path.join('lv_pc_drivers', 'SConscript'))

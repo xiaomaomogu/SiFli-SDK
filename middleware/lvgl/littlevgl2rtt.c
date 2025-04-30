@@ -443,6 +443,10 @@ int gui_lib_init(void)
 #endif
 
     lv_init();
+#if LV_USE_TINY_TTF
+    extern void lv_font_tiny_init(void);
+    lv_font_tiny_init();
+#endif
 #if LV_USE_LOG
     lv_log_register_print_cb(lv_rt_log);
 #endif
