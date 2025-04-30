@@ -116,6 +116,10 @@ common_projects:
   - path: example/ble/throughput/project
     boards: *default_boards
 
+  - path: example/bt/HCI_over_uart/project
+    boards: 
+      - em-lb525_hcpu    
+
   - path: example/bt/hfp/project
     boards: *bt_boards
 
@@ -305,6 +309,13 @@ common_projects:
   # - path: example/rt_device/pdm/project
   #   boards: *525_devkit_lcd_boards
 
+  - path: example/rt_device/pm/project/hcpu
+    boards:
+      - em-lb566
+      - eh-lb551
+      - em-lb525
+      - em-lb587
+
   - path: example/rt_device/pwm/pwm/project
     boards: *525_devkit_lcd_boards
 
@@ -331,4 +342,13 @@ common_projects:
 
   - path: example/rt_device/wdt/project
     boards: *525_devkit_lcd_boards    
+
+  - path: example/storage/flashdb/project/nand
+    boards:
+      - eh-lb525
+
+  - path: example/storage/flashdb/project/nor
+    boards:
+      - eh-lb523
+      - em-lb525 
 
