@@ -85,9 +85,9 @@ __WEAK void lcpu_img_install(void)
 #define lcpu_img_install()
 #endif
 
-__WEAK void lcpu_rom_config(void)
-{
 
+void lcpu_rom_config_default(void)
+{
     uint8_t rev_id = __HAL_SYSCFG_GET_REVID();
     uint8_t is_enable_lxt = USE_LXT;
     uint8_t is_lcpu_rccal = 1 - USE_LXT;
@@ -113,6 +113,12 @@ __WEAK void lcpu_rom_config(void)
         HAL_LCPU_CONFIG_set(HAL_LCPU_CONFIG_BT_CONFIG, &config, sizeof(config));
     }
 #endif // defined(SF32LB52X_REV_B) || defined(SF32LB52X_REV_AUTO)
+}
+
+
+__WEAK void lcpu_rom_config(void)
+{
+    lcpu_rom_config_default();
 }
 
 
