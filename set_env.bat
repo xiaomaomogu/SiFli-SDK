@@ -5,7 +5,8 @@ set SIFLI_SDK=%~dp0
 
 if not defined ORG_PATH (
     echo Please upgrate env to v1.1.2 or greater
-    goto :END 
+    echo set_env FAIL
+    exit /b 1
 )
 
 REM Use keil by default
