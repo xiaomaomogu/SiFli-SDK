@@ -533,13 +533,13 @@ def FileSystemBuild(source, env):
         Depends(target,source_list)
         SIFLI_SDK = os.getenv('SIFLI_SDK')
         if GetDepend('RT_USING_MTD_NAND'):
-            MKIMG_PATH = os.path.join(SIFLI_SDK, "tools/mkfatimg/mkfatimg_nand/release/mkfatimg.exe")
+            MKIMG_PATH = os.path.join(SIFLI_SDK, f"tools/mkfatimg/mkfatimg_nand/release/mkfatimg{env['tool_suffix']}")
             page_size=2048
         elif GetDepend('RT_USING_MTD_NOR'):
-            MKIMG_PATH = os.path.join(SIFLI_SDK, "tools/mkfatimg/mkfatimg.exe")
+            MKIMG_PATH = os.path.join(SIFLI_SDK, f"tools/mkfatimg/mkfatimg{env['tool_suffix']}")
             page_size=4096
         else:
-            MKIMG_PATH = os.path.join(SIFLI_SDK, "tools/mkfatimg/mkfatimg.exe")
+            MKIMG_PATH = os.path.join(SIFLI_SDK, f"tools/mkfatimg/mkfatimg{env['tool_suffix']}")
             page_size=4096
 
         env['fs_root']=source
