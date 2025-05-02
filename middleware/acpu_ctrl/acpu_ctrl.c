@@ -489,9 +489,9 @@ RT_WEAK int acpu_init(void)
 
     q_cfg.qid = ACPU_TASK_DONE_NTF_QUEUE;
     q_cfg.tx_buf_size = 0;
-    q_cfg.tx_buf_addr = NULL;
-    q_cfg.tx_buf_addr_alias = NULL;
-    q_cfg.rx_buf_addr = NULL;
+    q_cfg.tx_buf_addr = (uint32_t)NULL;
+    q_cfg.tx_buf_addr_alias = (uint32_t)NULL;
+    q_cfg.rx_buf_addr = (uint32_t)NULL;
     q_cfg.rx_ind = acpu_task_done_ind;
     q_cfg.user_data = 0;
 
