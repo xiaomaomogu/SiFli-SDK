@@ -4,11 +4,6 @@
 #include "log.h"
 
 
-#ifdef BT_FINSH
-    #include "bts2_app_interface.h"
-#endif
-
-
 static app_env_t g_app_env;
 static rt_mailbox_t g_app_mb;
 

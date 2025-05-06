@@ -553,7 +553,7 @@ static int bt_app_interface_event_handle(uint16_t type, uint16_t event_id, uint8
         {
             LOG_I("AVRCP connected success");
             bt_notify_profile_state_info_t *profile_info = (bt_notify_profile_state_info_t *)data;
-            bt_interface_set_avrcp_role_ext(&profile_info->mac, AVRCP_TG);
+            bt_interface_set_avrcp_role_ext(&profile_info->mac, AVRCP_CT);
         }
         break;
         case BT_NOTIFY_AVRCP_PROFILE_DISCONNECTED:

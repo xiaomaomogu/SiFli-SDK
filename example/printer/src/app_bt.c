@@ -61,8 +61,6 @@ typedef struct
 static bt_app_t g_bt_app_env;
 static rt_mailbox_t g_bt_app_mb;
 
-extern bts2_app_stru *bts2g_app_p;
-
 int bt_app_hci_event_handler(uint16_t event_id, uint8_t *msg)
 {
     switch (event_id)
@@ -161,15 +159,21 @@ void bt_app_spp_srv_event_handler(uint16_t event_id, uint8_t *msg)
 {
     switch (event_id)
     {
-    case BTS2MU_SPP_SRV_CONN_CFM:
+    case BTS2MU_SPP_CONN_CFM:
     {
-        BTS2S_SPP_SRV_CONN_CFM *my_msg = NULL;
-        my_msg = (BTS2S_SPP_SRV_CONN_CFM *)msg;
+        BTS2S_SPP_CONN_CFM *my_msg = NULL;
+        my_msg = (BTS2S_SPP_CONN_CFM *)msg;
+
+        U8 device_id;
 
         if (my_msg->res == BTS2_SUCC)
         {
             //!Customer adaptation
-            INFO_TRACE("%s,%d\n", __func__, __LINE__);
+            device_id = bt_interface_spp_get_device_id_by_addr(&my_msg->bd);
+            if (device_id != 0xff)
+            {
+                INFO_TRACE("%s,%d\n", __func__, __LINE__);
+            }
         }
         else
         {
@@ -178,30 +182,30 @@ void bt_app_spp_srv_event_handler(uint16_t event_id, uint8_t *msg)
         }
         break;
     }
-    case BTS2MU_SPP_SRV_DATA_IND:
+    case BTS2MU_SPP_DATA_IND:
     {
-        BTS2S_SPP_SRV_DATA_IND *my_msg;
+        BTS2S_SPP_DATA_IND *my_msg;
 
-        my_msg = (BTS2S_SPP_SRV_DATA_IND *) msg;
+        my_msg = (BTS2S_SPP_DATA_IND *) msg;
 
         //!Customer adaptation
         INFO_TRACE("%s,%d\n", __func__, __LINE__);
         break;
     }
-    case BTS2MU_SPP_SRV_DATA_CFM:
+    case BTS2MU_SPP_DATA_CFM:
     {
-        BTS2S_SPP_SRV_DATA_CFM *my_msg;
-        my_msg = (BTS2S_SPP_SRV_DATA_CFM *) msg;
+        BTS2S_SPP_DATA_CFM *my_msg;
+        my_msg = (BTS2S_SPP_DATA_CFM *) msg;
 
         //!Customer adaptation
         INFO_TRACE("%s,%d\n", __func__, __LINE__);
         break;
     }
-    case BTS2MU_SPP_SRV_DISC_CFM:
+    case BTS2MU_SPP_DISC_CFM:
     {
-        BTS2S_SPP_SRV_DISC_IND *my_msg;
+        BTS2S_SPP_DISC_IND *my_msg;
 
-        my_msg = (BTS2S_SPP_SRV_DISC_IND *) msg;
+        my_msg = (BTS2S_SPP_DISC_IND *) msg;
 
         //!Customer adaptation
         INFO_TRACE("%s,%d\n", __func__, __LINE__);
@@ -237,11 +241,6 @@ int bt_app_event_hdl(U16 type, U16 event_id, uint8_t *msg, uint32_t context)
 }
 BT_EVENT_REGISTER_LOW(bt_app_event_hdl, NULL);
 
-
-BOOL bt_spp_srv_test_enable(void)
-{
-    return TRUE;
-}
 
 // SDK会调用该函数，User只需要在自己工程实现该函数并返回产品定义的COD
 uint32_t bt_get_class_of_device(void)
