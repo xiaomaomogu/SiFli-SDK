@@ -168,7 +168,7 @@ def GenCconfigFile(env, BuildOptions):
 
 def ImgFileBuilder(target, source, env):
     SIFLI_SDK = os.getenv('SIFLI_SDK')
-    EZIP_PATH = os.path.join(SIFLI_SDK, "tools/png2ezip/ezip.exe")
+    EZIP_PATH = os.path.join(SIFLI_SDK, f"tools/png2ezip/ezip{env['tool_suffix']}")
     filename = os.path.basename("{}".format(target[0]))
     logging.info('ImgFileBuilder= '+env['FLAGS'])
     if ".gif" in str(source[0]):
@@ -533,7 +533,7 @@ def FileSystemBuild(source, env):
         Depends(target,source_list)
         SIFLI_SDK = os.getenv('SIFLI_SDK')
         if GetDepend('RT_USING_MTD_NAND'):
-            MKIMG_PATH = os.path.join(SIFLI_SDK, f"tools/mkfatimg/mkfatimg_nand/release/mkfatimg{env['tool_suffix']}")
+            MKIMG_PATH = os.path.join(SIFLI_SDK, f"tools/mkfatimg/mkfatimg_nand/Release/mkfatimg{env['tool_suffix']}")
             page_size=2048
         elif GetDepend('RT_USING_MTD_NOR'):
             MKIMG_PATH = os.path.join(SIFLI_SDK, f"tools/mkfatimg/mkfatimg{env['tool_suffix']}")
