@@ -14,7 +14,7 @@ build-sdk:
   script: |
     # 设置环境并构建
     . ./export.sh
-    python tools/autotest/build_sdk.py -c=build_config.yaml -p=gcc
+    python tools/autotest/build_sdk.py -c=build_config_gcc.yaml -p=gcc
     echo "SDK构建完成"
   artifacts:
     paths:
