@@ -42,7 +42,7 @@ const static uint8_t gzip_data[] =
 ALIGN(4)
 const static uint8_t exp_data_gzip[] =
 {
-#include "..\assets\lz4_gzip_output.dat"
+#include "../assets/lz4_gzip_output.dat"
 };
 ALIGN(4)  /* Source and destination address must be 4bytes aligned. */
 const static uint8_t lz4_data[] =
