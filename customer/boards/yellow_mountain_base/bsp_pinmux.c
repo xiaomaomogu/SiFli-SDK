@@ -188,15 +188,11 @@ static void BSP_PIN_Common(void)
     HAL_PIN_Set(PAD_PA17, SD1_DIO1, PIN_PULLUP, 1);
 #endif
     HAL_PIN_Set(PAD_PA00, GPIO_A0,  PIN_PULLDOWN, 1);     // #LCD_RESETB
-    HAL_PIN_Set(PAD_PA10, GPIO_A10, PIN_PULLDOWN, 1);     // AUDIO_PA_CTRL
+    HAL_PIN_Set(PAD_PA42, GPIO_A42, PIN_PULLDOWN, 1);     // AUDIO_PA_CTRL
 
     // UART1 - debug
     HAL_PIN_Set(PAD_PA18, USART1_RXD, PIN_PULLUP, 1);
     HAL_PIN_Set(PAD_PA19, USART1_TXD, PIN_PULLUP, 1);
-
-    // UART2 - log
-    HAL_PIN_Set(PAD_PA20, USART2_RXD, PIN_PULLUP, 1);
-    HAL_PIN_Set(PAD_PA27, USART2_TXD, PIN_PULLUP, 1);
 
     // Key1 - Power key
     /* Keep default pull-down unchanged. Uart download driver would use this function,
@@ -204,7 +200,7 @@ static void BSP_PIN_Common(void)
      */
     // HAL_PIN_Set(PAD_PA34, GPIO_A34, PIN_NOPULL, 1);
     // Key2
-    HAL_PIN_Set(PAD_PA11, GPIO_A11, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA43, GPIO_A43, PIN_NOPULL, 1);
 
     // PA22 #XTAL32K_XI
     // PA23 #XTAL32K_XO
@@ -219,6 +215,10 @@ static void BSP_PIN_Common(void)
     HAL_PIN_Set(PAD_PA28, SPI1_CLK, PIN_NOPULL, 1);
     HAL_PIN_Set(PAD_PA29, SPI1_CS,  PIN_NOPULL, 1);
 
+    // I2C2 (charger)
+    HAL_PIN_Set(PAD_PA10, I2C2_SCL, PIN_PULLUP, 1);
+    HAL_PIN_Set(PAD_PA11, I2C2_SDA, PIN_PULLUP, 1);
+
 //     HAL_PIN_Set_DS0(PAD_PA24, 1, 1);
 //     HAL_PIN_Set_DS0(PAD_PA25, 1, 1);
 //     HAL_PIN_Set_DS0(PAD_PA28, 1, 1);
@@ -228,15 +228,12 @@ static void BSP_PIN_Common(void)
 //     HAL_PIN_Set_DS1(PAD_PA25, 1, 1);
 //     HAL_PIN_Set_DS1(PAD_PA28, 1, 1);
 //     HAL_PIN_Set_DS1(PAD_PA29, 1, 1);
-#if defined(BSP_USING_PWM3) || defined(BSP_USING_RGBLED_WITCH_PWM3)
-    HAL_PIN_Set(PAD_PA32, GPTIM2_CH1, PIN_PULLUP, 1);   // RGB LED
-#endif
     // GPIOs
-    HAL_PIN_Set(PAD_PA21, GPIO_A21, PIN_PULLDOWN, 1);
     HAL_PIN_Set(PAD_PA26, GPIO_A26, PIN_NOPULL, 1);
     HAL_PIN_Set(PAD_PA32, GPIO_A32, PIN_PULLDOWN, 1);   // RGB LED
     HAL_PIN_Set(PAD_PA38, GPIO_A38, PIN_PULLDOWN, 1);
     HAL_PIN_Set(PAD_PA44, GPIO_A44, PIN_PULLDOWN, 1);   // VBUS_DET
+    HAL_PIN_Set(PAD_PA30, GPIO_A30, PIN_PULLDOWN, 1);   // Sensor Power
 #endif
 
 }
