@@ -1405,6 +1405,14 @@ menu "On-chip Peripheral RTOS Drivers"
             bool "Using epic render list API"
             default n
         endif
+        config EZIP_PAL_SUPPORT
+            bool
+            default y if !SOC_SF32LB55X
+            if EZIP_PAL_SUPPORT
+                config EZIP_PAL_SUPPORT_1
+                    bool
+                    default y if !SOC_SF32LB56X && !SOC_SF32LB58X
+            endif
 
     config BSP_USING_LCDC
         bool "Enable LCDC"
