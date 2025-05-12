@@ -399,7 +399,9 @@ menu "Sifli middleware"
                             select USING_METRICS_COLLECTOR
                             bool "Save by Metrics Collector"
                         config CPU_USAGE_METRICS_PRINT_DIRECTLY
-                            bool "Print Directly"
+                            bool "Print Periodically"
+                        config CPU_USAGE_METRICS_PRINT_MANUALLY
+                            bool "Print Manually"
                     endchoice
                     if CPU_USAGE_METRICS_PRINT_DIRECTLY
                         config CPU_USAGE_METRICS_PRINT_PERIOD
