@@ -23,25 +23,9 @@
                     ]
                 }, 
                 "img": "bootloader"
-            }, 
+            },
             {
-                "offset": "0x00020000", 
-                "max_size": "0x00200000", 
-                "tags": [
-                    "HCPU_FLASH_CODE"
-                ], 
-                "ftab": {
-                    "name": "main", 
-                    "address": [
-                        "base", 
-                        "xip"
-                    ]
-                }, 
-                "img": "main",
-                "exec": "main"
-            }, 
-            {
-                "offset": "0x00220000",
+                "offset": "0x00020000",
                 "max_size": "0x00060000",
                 "tags": [
                     "DFU_FLASH_CODE"
@@ -57,32 +41,48 @@
                 }
             },
             {
-                "offset": "0x00280000",
+                "offset": "0x00080000",
                 "max_size": "0x00120000",
                 "tags": [
                     "DFU_DOWNLOAD_REGION"
                 ]
             },
             {
-                "offset": "0x003A0000",
-                "max_size": "0x00280000",
-                "img": "fs_root", 
-                "tags": [
-                    "FS_REGION"
-                ]
-            }, 
-            {
-                "offset": "0x00620000", 
+                "offset": "0x001a0000", 
                 "max_size": "0x00004000", 
                 "tags": [
                     "KVDB_DFU_REGION"
                 ]
             }, 
             {
-                "offset": "0x00624000", 
+                "offset": "0x001a4000", 
                 "max_size": "0x00004000", 
                 "tags": [
                     "KVDB_BLE_REGION"
+                ]
+            },
+            {
+                "offset": "0x00200000", 
+                "max_size": "0x00C00000", 
+                "tags": [
+                    "HCPU_FLASH_CODE"
+                ], 
+                "ftab": {
+                    "name": "main", 
+                    "address": [
+                        "base", 
+                        "xip"
+                    ]
+                }, 
+                "img": "main",
+                "exec": "main"
+            }, 
+            {
+                "offset": "0x00E00000",
+                "max_size": "0x00100000",
+                "img": "fs_root", 
+                "tags": [
+                    "FS_REGION"
                 ]
             }
         ]
