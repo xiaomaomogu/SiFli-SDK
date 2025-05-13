@@ -367,6 +367,11 @@ if BSP_USING_LCD
             select LCD_USING_OPM060E9_V10
             select BSP_LCDC_USING_EPD_8BIT
 
+        config LCD_USING_EDP_YZC052_V105
+            bool "6.0 rect electronic paper display(EPD YZC052_V1.05 1032x758)"
+            select LCD_USING_OPM060E9_V10
+            select BSP_LCDC_USING_EPD_8BIT
+
     endchoice
 
     config LCD_HOR_RES_MAX
@@ -409,6 +414,7 @@ if BSP_USING_LCD
         default 390 if LCD_USING_TFT_CO5300
         default 780 if LCD_USING_TFT_CO5300_DUAL
         default 1448 if LCD_USING_EDP_OPM060E9_V10
+        default 1032 if LCD_USING_EDP_YZC052_V105
 
         
     config LCD_VER_RES_MAX
@@ -451,6 +457,7 @@ if BSP_USING_LCD
         default 450 if LCD_USING_TFT_CO5300
         default 450 if LCD_USING_TFT_CO5300_DUAL
         default 1072 if LCD_USING_EDP_OPM060E9_V10
+        default 758 if LCD_USING_EDP_YZC052_V105
 
     config LCD_DPI
         int
@@ -492,6 +499,7 @@ if BSP_USING_LCD
         default 300 if LCD_USING_TFT_CO5300
         default 300 if LCD_USING_TFT_CO5300_DUAL
         default 300 if LCD_USING_EDP_OPM060E9_V10
+        default 212 if LCD_USING_EDP_YZC052_V105
 
     config BSP_USING_LCD_FRAMEBUFFER
         bool
