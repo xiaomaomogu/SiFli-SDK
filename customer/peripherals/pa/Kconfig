@@ -9,5 +9,10 @@ config PA_USING_AW87390
 config PA_USING_AW8155
     bool  "analog PA AW8155 enable"
     default n
+    if PA_USING_AW8155
+        config AW8155_GPIO_PIN
+            int "AW8155 Control PIN"
+            default 0
+    endif 
 
 endmenu
