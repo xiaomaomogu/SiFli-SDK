@@ -4,7 +4,7 @@ config ASIC
    
 config TOUCH_IRQ_PIN
     int
-    default 43
+    default 9
 
 config LCD_PWM_BACKLIGHT_INTERFACE_NAME
     string

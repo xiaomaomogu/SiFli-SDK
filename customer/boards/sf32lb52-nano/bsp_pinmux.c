@@ -136,44 +136,7 @@ static void board_pinmux_mpi1_none(void)
     }
 }
 #endif
-#ifdef BSP_GPADC_SUPPORT_MULTI_CH_SAMPLING
-void BSP_adc_pinmux_config()
-{
-    HAL_PIN_Set(PAD_PA28, GPIO_A28, PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA29, GPIO_A29, PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA30, GPIO_A30, PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA31, GPIO_A31, PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA32, GPIO_A32, PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA33, GPIO_A33, PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA34, GPIO_A34, PIN_NOPULL, 1);
-
-    /*adc1_ch0*/
-    HAL_PIN_Set_Analog(PAD_PA28, 1);
-    //HAL_PIN_SetMode(PAD_PA28, 1, PIN_ANALOG_INPUT);
-
-    /*adc1_ch1*/
-    HAL_PIN_Set_Analog(PAD_PA29, 1);
-    //HAL_PIN_SetMode(PAD_PA29, 1, PIN_ANALOG_INPUT);
-
-    /*adc1_ch2*/
-    HAL_PIN_Set_Analog(PAD_PA30, 1);
-    //HAL_PIN_SetMode(PAD_PA30, 1, PIN_ANALOG_INPUT);
-
-    /*adc1_ch3*/
-    HAL_PIN_Set_Analog(PAD_PA31, 1);
-    //HAL_PIN_SetMode(PAD_PA31, 1, PIN_ANALOG_INPUT);
-
-    /*adc1_ch4*/
-    HAL_PIN_Set_Analog(PAD_PA32, 1);
-    //HAL_PIN_SetMode(PAD_PA32, 1, PIN_ANALOG_INPUT);
-
-    /*adc1_ch5*/
-    HAL_PIN_Set_Analog(PAD_PA33, 1);
-    //HAL_PIN_SetMode(PAD_PA33, 1, PIN_ANALOG_INPUT);
-
-}
-#endif
-void BSP_PIN_Init(void)
+static void BSP_PIN_Common(void)
 {
 #ifdef SOC_BF0_HCPU
     // HCPU pins
@@ -283,125 +246,91 @@ void BSP_PIN_Init(void)
     HAL_PIN_SetMode(PAD_PA19, 1, PIN_DIGITAL_IO_PULLDOWN);
 #endif /* 1 */
 
-#ifdef BSP_USING_LCD
-    HAL_PIN_Set(PAD_PA04, LCDC1_SPI_CLK, PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA03, LCDC1_SPI_CS, PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA05, LCDC1_SPI_DIO0, PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA06, LCDC1_SPI_DIO1, PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA07, LCDC1_SPI_DIO2, PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA08, LCDC1_SPI_DIO3, PIN_NOPULL, 1);
-#endif
-#ifdef BSP_LCDC_USING_DDR_QADSPI
-    if (__HAL_SYSCFG_GET_REVID() < 3)
-    {
-        HAL_PIN_Set_DS0(PAD_PA04, 1, 1);
-        HAL_PIN_Set_DS0(PAD_PA05, 1, 0);
-        HAL_PIN_Set_DS0(PAD_PA06, 1, 0);
-        HAL_PIN_Set_DS0(PAD_PA07, 1, 0);
-        HAL_PIN_Set_DS0(PAD_PA08, 1, 0);
-
-        HAL_PIN_Set_DS1(PAD_PA04, 1, 1);
-        HAL_PIN_Set_DS1(PAD_PA05, 1, 0);
-        HAL_PIN_Set_DS1(PAD_PA06, 1, 0);
-        HAL_PIN_Set_DS1(PAD_PA07, 1, 0);
-        HAL_PIN_Set_DS1(PAD_PA08, 1, 0);
-    }
-#endif /* DDR_LCD */
-
-#ifdef BSP_USING_LCD
-    HAL_PIN_Set(PAD_PA02, LCDC1_SPI_TE, PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA00, GPIO_A0, PIN_NOPULL, 1);
-
-    //HAL_PIN_Set(PAD_PA00, LCDC1_SPI_RSTB, PIN_PULLUP, 1);
-#if defined(LCD_USING_PWM_AS_BACKLIGHT)
-    HAL_PIN_Set(PAD_PA01, GPTIM2_CH4, PIN_NOPULL, 1);   // LCDC1_BL_PWM_CTRL, LCD backlight PWM
-#else
-    HAL_PIN_Set(PAD_PA01, GPIO_A1, PIN_NOPULL, 1);     // LCDC1_BL_PWM_CTRL, LCD backlight PWM
-#endif
-#endif
 
     // Key1
     /* Keep default pull-down unchanged. Uart download driver would use this function,
      * if pulldown is disabled, download driver would not work on the board without external pull-down
      */
-    // HAL_PIN_Set(PAD_PA34, GPIO_A34, PIN_NOPULL, 1);
 
-#ifdef BSP_USING_I2C3
-    /* MAG */
-    HAL_PIN_Set(PAD_PA29, I2C3_SCL, PIN_PULLUP, 1);
-    HAL_PIN_Set(PAD_PA28, I2C3_SDA, PIN_PULLUP, 1);
-#endif
 
-    //HAL_PIN_Set(PAD_PB00, USART4_TXD, PIN_PULLUP, 0);
-    //HAL_PIN_Set(PAD_PB01, USART4_RXD, PIN_PULLUP, 0);
-
-#if defined(BSP_USING_USBD) || defined(BSP_USING_USBH)
-    HAL_PIN_Set_Analog(PAD_PA35, 1);
-    HAL_PIN_Set_Analog(PAD_PA36, 1);
-    HAL_PIN_Set(PAD_PA32, GPIO_A32, PIN_NOPULL, 1);//USB detection pin
-#else
-    HAL_PIN_Set(PAD_PA35, USART3_TXD, PIN_PULLUP, 1);
-    HAL_PIN_Set(PAD_PA36, USART3_RXD, PIN_PULLUP, 1);
-#endif
 
 #endif
 
-#ifdef RT_USING_AUDIO
-    HAL_PIN_Set(PAD_PA09, GPIO_A9, PIN_NOPULL, 1);      //share with MIC
-    HAL_PIN_Set(PAD_PA10, GPIO_A10, PIN_NOPULL, 1);     // AUDIO_PA_CTRL
-#endif
-    HAL_PIN_Set(PAD_PA11, GPIO_A11, PIN_NOPULL, 1);     // VDD_EN
 
-    /* Motor PWM */
-    HAL_PIN_Set(PAD_PA20, GPTIM1_CH4, PIN_NOPULL, 1);
 
-#if defined(LXT_DISABLE) && defined(BSP_USING_PDM1)
-    HAL_PIN_Set(PAD_PA22, PDM1_CLK, PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA23, PDM1_DATA, PIN_PULLDOWN, 1);
-    HAL_PIN_SetMode(PAD_PA23, 1, PIN_DIGITAL_IO_PULLDOWN);
-#endif
-    HAL_PIN_Set(PAD_PA24, GPIO_A24, PIN_NOPULL, 1);
-    HAL_PIN_Set(PAD_PA25, GPIO_A25, PIN_NOPULL, 1);
 
-    HAL_PIN_Set(PAD_PA30, GPIO_A30, PIN_NOPULL, 1);
-    HAL_PIN_SetMode(PAD_PA30, 1, PIN_DIGITAL_IO_NORMAL);
 
-    /* MAG EN */
-    HAL_PIN_Set(PAD_PA31, GPIO_A31, PIN_NOPULL, 1);
-    HAL_PIN_SetMode(PAD_PA31, 1, PIN_DIGITAL_O_NORMAL);
+}
 
-    /* HR WKUP INT */
-    HAL_PIN_Set(PAD_PA37, GPIO_A37, PIN_NOPULL, 1);
-
-    /* HR RST */
-    HAL_PIN_Set(PAD_PA38, GPIO_A38, PIN_NOPULL, 1);
-
-    // GS/HR
-    HAL_PIN_Set(PAD_PA40, I2C2_SCL, PIN_PULLUP, 1);
-    HAL_PIN_Set(PAD_PA39, I2C2_SDA, PIN_PULLUP, 1);
-
+void BSP_PIN_Touch(void)
+{
     // Touch
-    HAL_PIN_Set(PAD_PA42, I2C1_SCL, PIN_PULLUP, 1);
-    HAL_PIN_Set(PAD_PA41, I2C1_SDA, PIN_PULLUP, 1);
+    HAL_PIN_Set(PAD_PA09, GPIO_A9,  PIN_NOPULL, 1);    // TP_INT
+    HAL_PIN_Set(PAD_PA10, GPIO_A10, PIN_NOPULL, 1);    // TP_RESET
+    HAL_PIN_Set(PAD_PA20, I2C1_SCL, PIN_PULLUP, 1);
+    HAL_PIN_Set(PAD_PA11, I2C1_SDA, PIN_PULLUP, 1);
+}
 
-    /* TP WKUP INT */
-    HAL_PIN_Set(PAD_PA43, GPIO_A43, PIN_NOPULL, 1);
-    /* TP RESET */
-    HAL_PIN_Set(PAD_PA44, GPIO_A44, PIN_NOPULL, 1);
+void BSP_PIN_LCD(void)
+{
 
-    // LCPU pins
-#ifdef BSP_GPADC_SUPPORT_MULTI_CH_SAMPLING
-    BSP_adc_pinmux_config();
+#ifdef BSP_LCDC_USING_QADSPI
+    HAL_PIN_Set(PAD_PA00, GPIO_A0, PIN_NOPULL, 1);   // LCD_RSTB
+    HAL_PIN_Set(PAD_PA01, GPIO_A1, PIN_NOPULL, 1);   // LCD_AVDD_EN
+
+    // LCDC1 - QSPI
+    HAL_PIN_Set(PAD_PA02, LCDC1_SPI_TE, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA03, LCDC1_SPI_CS, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA04, LCDC1_SPI_CLK, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA05, LCDC1_SPI_DIO0, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA06, LCDC1_SPI_DIO1, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA07, LCDC1_SPI_DIO2, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA08, LCDC1_SPI_DIO3, PIN_NOPULL, 1);
+
+    BSP_PIN_Touch();
+    // A37, 39-43 GPIOs
+#elif defined(BSP_LCDC_USING_DBI)
+    HAL_PIN_Set(PAD_PA01, GPTIM1_CH4, PIN_NOPULL, 1);   // LCDC1_BL_PWM_CTRL, LCD backlight PWM
+
+    // LCDC1 - QSPI
+    HAL_PIN_Set(PAD_PA02, LCDC1_8080_TE, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA03, LCDC1_8080_CS, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA04, LCDC1_8080_WR, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA05, LCDC1_8080_RD, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA06, LCDC1_8080_DC, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA07, LCDC1_8080_DIO0, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA08, LCDC1_8080_DIO1, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA37, LCDC1_8080_DIO2, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA39, LCDC1_8080_DIO3, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA40, LCDC1_8080_DIO4, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA41, LCDC1_8080_DIO5, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA42, LCDC1_8080_DIO6, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA43, LCDC1_8080_DIO7, PIN_NOPULL, 1);
+
+    BSP_PIN_Touch();
+    // A37, 39-43 GPIOs
+#elif defined(BSP_LCDC_USING_SPI_DCX_1DATA)
+    // LCDC1 - SPI
+    HAL_PIN_Set(PAD_PA02, LCDC1_SPI_TE, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA03, LCDC1_SPI_CS, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA04, LCDC1_SPI_CLK, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA05, LCDC1_SPI_DIO0, PIN_NOPULL, 1);
+    HAL_PIN_Set(PAD_PA06, LCDC1_SPI_DIO1, PIN_NOPULL, 1);
+
+    // GPIOs A00, A7-A9, A26, A30, A33, A39-A43
+#else
+    /* disable compile error as LCD may be disabled by some example, such as hal_example */
+// #error LCD type not supported in this board.
 #endif
-    // UART4
-    //HAL_PIN_Set(PAD_PB01, USART4_TXD, PIN_PULLUP, 0);
-    //HAL_PIN_Set(PAD_PB00, USART4_RXD, PIN_PULLUP, 0);
-    //HAL_PIN_Set(PAD_PB18, USART5_TXD, PIN_PULLUP, 0);
-    //HAL_PIN_Set(PAD_PB17, USART5_RXD, PIN_PULLUP, 0);
 
-    // UART5
-    //HAL_PIN_Set(PAD_PB03, USART5_TXD, PIN_PULLUP, 0);
-    //HAL_PIN_Set(PAD_PB02, USART5_RXD, PIN_PULLUP, 0);
+
+}
+
+void BSP_PIN_Init(void)
+{
+    BSP_PIN_Common();
+
+    BSP_PIN_LCD();
 
 }
 
