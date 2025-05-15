@@ -194,11 +194,11 @@ static int l1_only_test(uint32_t test_seconds, uint32_t rendering_period)
 
             /*Fill framebuffer*/
             //rt_kprintf("Fill framebuffer addr=0x%x, y0~y1=%d~%d, size=%d(Bytes)\n", p_render_fb, src_area.y0, src_area.y1, L1_FB_TOTAL_BYTES);
-            if (0 == color) fill_color((uint8_t *)p_render_fb, L1_FB_WIDTH, height, FB_COLOR_FORMAT, 0xFF0000); //Fill RED color
-            if (1 == color) fill_color((uint8_t *)p_render_fb, L1_FB_WIDTH, height, FB_COLOR_FORMAT, 0x00FF00); //Fill GREEN color
-            if (2 == color) fill_color((uint8_t *)p_render_fb, L1_FB_WIDTH, height, FB_COLOR_FORMAT, 0x0000FF); //Fill BLUE color
-            if (3 == color) fill_color((uint8_t *)p_render_fb, L1_FB_WIDTH, height, FB_COLOR_FORMAT, 0xFFFFFF); //Fill WHITE color
-            if (4 == color) fill_color((uint8_t *)p_render_fb, L1_FB_WIDTH, height, FB_COLOR_FORMAT, 0xFFFF00); //Fill YELLOW color
+            if (0 == color) fill_color((uint8_t *)p_render_fb, L1_FB_WIDTH, height, FB_COLOR_FORMAT, 0xFFFF0000); //Fill RED color
+            if (1 == color) fill_color((uint8_t *)p_render_fb, L1_FB_WIDTH, height, FB_COLOR_FORMAT, 0xFF00FF00); //Fill GREEN color
+            if (2 == color) fill_color((uint8_t *)p_render_fb, L1_FB_WIDTH, height, FB_COLOR_FORMAT, 0xFF0000FF); //Fill BLUE color
+            if (3 == color) fill_color((uint8_t *)p_render_fb, L1_FB_WIDTH, height, FB_COLOR_FORMAT, 0xFFFFFFFF); //Fill WHITE color
+            if (4 == color) fill_color((uint8_t *)p_render_fb, L1_FB_WIDTH, height, FB_COLOR_FORMAT, 0xFFFFFF00); //Fill YELLOW color
 
 
             if (last_one)
@@ -290,17 +290,10 @@ static int l1_and_l2_test(uint32_t test_seconds, uint32_t l1_framebuf_cnt, uint3
     uint8_t color = 0;
     drv_lcd_fb_init("lcd");
     drv_lcd_fb_set(&fb_dsc);
-    write_fb_cbk cb = NULL;
 
-    rt_sem_init(&done_sema, "donesem", 0, RT_IPC_FLAG_FIFO);
-    if (2 == l1_framebuf_cnt)
-    {
-        cb = NULL;
-    }
-    else
-    {
-        cb = lcd_flush_done;
-    }
+
+    rt_sem_init(&done_sema, "donesem", 1, RT_IPC_FLAG_FIFO);
+
 
     uint8_t *p_render_fb = (uint8_t *)&l1_framebuffer1[0];
 
@@ -314,10 +307,25 @@ static int l1_and_l2_test(uint32_t test_seconds, uint32_t l1_framebuf_cnt, uint3
 
         //rt_kprintf("L2 framebuffer addr=0x%x, w=%d, h=%d, size=%d(Bytes)\n", fb_dsc.p_data, L2_FB_WIDTH, L2_FB_HEIGHT, L2_FB_TOTAL_BYTES);
 
+        /*Fill framebuffer*/
+        //rt_kprintf("Fill framebuffer addr=0x%x, y0~y1=%d~%d, size=%d(Bytes)\n", p_render_fb, src_area.y0, src_area.y1, L1_FB_TOTAL_BYTES);
+        uint32_t v = 0xFFFF00FF; //Fill MAGENTA color
+        if (0 == color) v = 0xFFFF0000; //Fill RED color
+        else if (1 == color) v = 0xFF00FF00; //Fill GREEN color
+        else if (2 == color) v = 0xFF0000FF; //Fill BLUE color
+        else if (3 == color) v = 0xFFFFFFFF; //Fill WHITE color
+        else if (4 == color) v = 0xFFFFFF00; //Fill YELLOW color
+
+        /*Waitting done*/
+        rt_sem_take(&done_sema, RT_WAITING_FOREVER);
+        fill_color((uint8_t *)&l1_framebuffer1[0], L1_FB_WIDTH, L1_FB_HEIGHT, FB_COLOR_FORMAT, v);
+        if (2 == l1_framebuf_cnt) fill_color((uint8_t *)&l1_framebuffer2[0], L1_FB_WIDTH, L1_FB_HEIGHT, FB_COLOR_FORMAT, v);
+
         uint32_t start_ms = rt_tick_get_millisecond();
         for (src_area.y0 = 0; src_area.y0 < L2_FB_HEIGHT;  src_area.y0 += L1_FB_HEIGHT)
         {
             uint8_t last_one;
+            write_fb_cbk cb = NULL;
 
             if ((src_area.y0 + L1_FB_HEIGHT) >= L2_FB_HEIGHT)
             {
@@ -329,26 +337,15 @@ static int l1_and_l2_test(uint32_t test_seconds, uint32_t l1_framebuf_cnt, uint3
                 src_area.y1 = src_area.y0 + L1_FB_HEIGHT - 1;
                 last_one = 0;
             }
-            uint32_t fill_height = src_area.y1 - src_area.y0 + 1;
-
-            /*Fill framebuffer*/
-            //rt_kprintf("Fill framebuffer addr=0x%x, y0~y1=%d~%d, size=%d(Bytes)\n", p_render_fb, src_area.y0, src_area.y1, L1_FB_TOTAL_BYTES);
-            if (0 == color) fill_color((uint8_t *)p_render_fb, L1_FB_WIDTH, fill_height, FB_COLOR_FORMAT, 0xFF0000); //Fill RED color
-            if (1 == color) fill_color((uint8_t *)p_render_fb, L1_FB_WIDTH, fill_height, FB_COLOR_FORMAT, 0x00FF00); //Fill GREEN color
-            if (2 == color) fill_color((uint8_t *)p_render_fb, L1_FB_WIDTH, fill_height, FB_COLOR_FORMAT, 0x0000FF); //Fill BLUE color
-            if (3 == color) fill_color((uint8_t *)p_render_fb, L1_FB_WIDTH, fill_height, FB_COLOR_FORMAT, 0xFFFFFF); //Fill WHITE color
-            if (4 == color) fill_color((uint8_t *)p_render_fb, L1_FB_WIDTH, fill_height, FB_COLOR_FORMAT, 0xFFFF00); //Fill YELLOW color
-
-
-
 
             if (last_one)
             {
-                uint32_t cur_ms = rt_tick_get_millisecond();
-                if (cur_ms - start_ms <= rendering_period)
-                    rt_thread_delay(rt_tick_from_millisecond(rendering_period - (cur_ms - start_ms)));
-                else
-                    rt_kprintf("Rendering period:%dms, expect: %dms\n", cur_ms - start_ms, rendering_period);
+                //rt_thread_delay(((uint32_t)rand())%rendering_period);
+                cb = lcd_flush_done;
+            }
+            else
+            {
+                cb = NULL;
             }
 
             drv_lcd_fb_write_send(&src_area, &src_area, (uint8_t *)p_render_fb, cb, last_one);
@@ -359,19 +356,13 @@ static int l1_and_l2_test(uint32_t test_seconds, uint32_t l1_framebuf_cnt, uint3
                 else
                     p_render_fb = (uint8_t *)&l1_framebuffer1[0];
             }
-            else
-            {
-                /*Waitting done*/
-                rt_sem_take(&done_sema, RT_WAITING_FOREVER);
-            }
         }
 
         color = (color + 1) % 5;
 
         if (2 == l2_framebuf_cnt)
         {
-            /*Use another L2 buffer*/
-            if (fb_dsc.p_data == (uint8_t *)&l2_framebuffer1[0])
+            if (rand() & 1) //Select framebuffer randomly
                 fb_dsc.p_data = (uint8_t *)&l2_framebuffer2[0];
             else
                 fb_dsc.p_data = (uint8_t *)&l2_framebuffer1[0];

@@ -160,6 +160,14 @@ typedef struct _lcd_flush_info_t
     LCD_AreaDef  pixel_area;
 } lcd_flush_info_t;
 
+inline static void lcd_area_copy(LCD_AreaDef *dest, const LCD_AreaDef *src)
+{
+    dest->x0 = src->x0;
+    dest->y0 = src->y0;
+    dest->x1 = src->x1;
+    dest->y1 = src->y1;
+}
+
 #define SF_GRAPHIC_CTRL_LCDC_FLUSH  2000
 
 

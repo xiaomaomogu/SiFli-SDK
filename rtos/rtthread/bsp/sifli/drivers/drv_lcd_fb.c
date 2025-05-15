@@ -108,6 +108,8 @@ typedef struct
     uint8_t  ready;   /*The FB is ready to flush LCD*/
     int32_t fb_valid_y1; /*Writeable lines are [0 ~ fb_height-1], and -1 means no writeable line.*/
     int32_t fb_flush_start_y; /*The line ,should be in [0 ~ fb_height-1],where the LCDC flushed from*/
+    uint32_t flush_start_tick;       /*Last aysnc flush LCD start tick*/
+    uint32_t flush_end_tick;         /*Last aysnc flush LCD end tick*/
 } LCD_FBTypeDef;
 
 typedef struct
@@ -134,8 +136,6 @@ typedef struct
     uint32_t write_start_tick;       /*Last aysnc write framebuffer start tick*/
     uint32_t write_end_tick;         /*Last aysnc write framebuffer end tick*/
 
-    uint32_t flush_start_tick;       /*Last aysnc flush LCD start tick*/
-    uint32_t flush_end_tick;         /*Last aysnc flush LCD end tick*/
 #ifdef DRV_LCD_FB_STATISTICS
     uint32_t write_ticks_sum;
     uint32_t write_bytes_sum;
@@ -229,8 +229,9 @@ static void err_debug(void)
               p_fb->fb_flush_start_y,
               p_fb->fb_valid_y1);
         LOG_E("fb_clip:"AreaString, AreaParams(&p_fb->fb_clip));
+        LOG_E("flush_start=%d,end=%d", p_fb->flush_start_tick, p_fb->flush_end_tick);
     }
-
+    LOG_E("----");
     LOG_E("write_idx=%d,flush_idx=%d,total=%d", drv_lcd_fb.write_fb_idx, drv_lcd_fb.flush_fb_idx, drv_lcd_fb.fb_total);
     LOG_E("flush_req=%d,rsp=%d, write_req=%d,rsp=%d",
           drv_lcd_fb.dbg_flush_req, drv_lcd_fb.dbg_flush_rsp,
@@ -326,9 +327,8 @@ static rt_err_t fb_flush_done(rt_device_t dev, void *buffer)
 {
     rt_err_t err;
 
-    drv_lcd_fb.flush_end_tick = rt_tick_get();
     drv_lcd_fb.dbg_flush_rsp++;
-    LOG_D("fb_flush_done %p, cost=%d ticks", buffer, drv_lcd_fb.flush_end_tick - drv_lcd_fb.flush_start_tick);
+
 #ifdef PKG_USING_SYSTEMVIEW
     SystemView_mark_stop(FLUSH_LCD_SYSTEMVIEW_MARK_ID);
 #endif /* PKG_USING_SYSTEMVIEW */
@@ -337,6 +337,8 @@ static rt_err_t fb_flush_done(rt_device_t dev, void *buffer)
 
     LCD_FBTypeDef *p_fb = &drv_lcd_fb.fbs[drv_lcd_fb.flush_fb_idx];
 
+    DRV_LCD_FB_ASSERT(1 == p_fb->ready);
+    DRV_LCD_FB_ASSERT(1 == p_fb->fb_flushing_lcd);
     p_fb->ready = 0;
     p_fb->fb_flushing_lcd = 0;
     p_fb->fb_flush_start_y = INT32_MIN;
@@ -346,12 +348,13 @@ static rt_err_t fb_flush_done(rt_device_t dev, void *buffer)
     err = rt_event_send(&drv_lcd_fb.event,
                         (0 == drv_lcd_fb.flush_fb_idx) ? EVENT_FB0_FLUSH_DONE : EVENT_FB1_FLUSH_DONE);
 
-
-    //Flush next one.
-    drv_lcd_fb.flush_fb_idx = (drv_lcd_fb.flush_fb_idx + 1) % drv_lcd_fb.fb_total;
     rt_hw_interrupt_enable(level);
 
+    p_fb->flush_end_tick = rt_tick_get();
+    LOG_D("fb_flush_done %p, cost=%d ticks", buffer, p_fb->flush_end_tick - p_fb->flush_start_tick);
     LOG_D("fb_flush_done event=%x", drv_lcd_fb.event.set);
+
+    //Flush next one if it's ready.
     fb_flush_start();
     return err;
 }
@@ -360,20 +363,27 @@ static rt_err_t fb_flush_start(void)
 {
     rt_err_t err;
     rt_device_t p_lcd_dev = drv_lcd_fb.p_lcd_dev;
-    LCD_FBTypeDef *p_fb = &drv_lcd_fb.fbs[drv_lcd_fb.flush_fb_idx];
-    LCD_AreaDef win_area = p_fb->fb_clip;
-    LCD_AreaDef *p_fb_area = &p_fb->fb.area;
     LCD_AreaDef common_area;/*Relative area of FB will be flushed*/
+    lcd_flush_info_t flush_info;
+
 
     LOG_D("fb_flush_start");
+
     rt_base_t level = rt_hw_interrupt_disable();
+    if (1 == Enable_LineCpltCbk) //Previous flush is not done.
+    {
+        rt_hw_interrupt_enable(level);
+        return RT_EBUSY;
+    }
+
+    //Find the valid framebuffer
+    LCD_FBTypeDef *p_fb = &drv_lcd_fb.fbs[drv_lcd_fb.flush_fb_idx];
     if (0 == p_fb->ready)
     {
         //Flush next one.
         drv_lcd_fb.flush_fb_idx = (drv_lcd_fb.flush_fb_idx + 1) % drv_lcd_fb.fb_total;
         p_fb = &drv_lcd_fb.fbs[drv_lcd_fb.flush_fb_idx];
-        win_area = p_fb->fb_clip;
-        p_fb_area = &p_fb->fb.area;
+
         if (0 == p_fb->ready)
         {
             rt_hw_interrupt_enable(level);
@@ -383,57 +393,47 @@ static rt_err_t fb_flush_start(void)
     }
 
 
-    if (0 == p_fb->fb_flushing_lcd)
-        p_fb->fb_flushing_lcd = 1;
-    else
-    {
-        rt_hw_interrupt_enable(level);
-        return RT_EBUSY;
-    }
-    rt_hw_interrupt_enable(level);
+    //Setup line interrupt handler variables
+    Enable_LineCpltCbk = 1;
+    DRV_LCD_FB_ASSERT(area_intersect(&common_area, &p_fb->fb_clip, &p_fb->fb.area));
+    set_valid_y(common_area.y0 - p_fb->fb.area.y0 - 1);
+    p_fb->fb_flush_start_y = common_area.y0 - p_fb->fb.area.y0;
+    p_fb->fb_flushing_lcd = 1;
+
+
+    //Setup flush info
+    flush_info.cmpr_rate = p_fb->fb.cmpr_rate;
+    flush_info.pixel      = p_fb->fb.p_data;
+    flush_info.color_format    = p_fb->fb.format;
+    lcd_area_copy(&flush_info.window, &p_fb->fb_clip);
+    lcd_area_copy(&flush_info.pixel_area, &p_fb->fb.area);
 
     //Prepare an clean 'fb_clip' for new frame.
-    memcpy(&p_fb->fb_clip, &invalid_area, sizeof(LCD_AreaDef));
-    if (area_intersect(&common_area, &win_area, p_fb_area))
-    {
-        lcd_flush_info_t flush_info;
-        set_valid_y(common_area.y0 - p_fb_area->y0 - 1);
-        p_fb->fb_flush_start_y = common_area.y0 - p_fb_area->y0;
+    lcd_area_copy(&p_fb->fb_clip, &invalid_area);
+
+    rt_hw_interrupt_enable(level);
 
 
-        drv_lcd_fb.flush_start_tick = rt_tick_get();
-        drv_lcd_fb.dbg_flush_req++;
 
-        //Flush to lcd
-        rt_device_set_tx_complete(drv_lcd_fb.p_lcd_dev, fb_flush_done);
-        Enable_LineCpltCbk = 1;
-
-        flush_info.cmpr_rate = p_fb->fb.cmpr_rate;
-        flush_info.pixel      = p_fb->fb.p_data;
-        flush_info.color_format    = p_fb->fb.format;
-        memcpy(&flush_info.window, &win_area, sizeof(flush_info.window));
-        memcpy(&flush_info.pixel_area, &p_fb->fb.area, sizeof(flush_info.pixel_area));
-
+    //Flush to lcd
+    drv_lcd_fb.dbg_flush_req++;
+    p_fb->flush_start_tick = rt_tick_get();
+    rt_device_set_tx_complete(drv_lcd_fb.p_lcd_dev, fb_flush_done);
 #ifdef PKG_USING_SYSTEMVIEW
-        SystemView_mark_start(FLUSH_LCD_SYSTEMVIEW_MARK_ID,
-                              "window:"AreaString" p_data=%p", AreaParams(&flush_info.window), flush_info.pixel);
+    SystemView_mark_start(FLUSH_LCD_SYSTEMVIEW_MARK_ID,
+                          "window:"AreaString" p_data=%p", AreaParams(&flush_info.window), flush_info.pixel);
 #endif /* PKG_USING_SYSTEMVIEW */
-        LOG_D("fb_flush_start idx=%d", drv_lcd_fb.flush_fb_idx);
-        LOG_D("window:"AreaString" fb:"AreaString" p_data=%p",
-              AreaParams(&flush_info.window), AreaParams(&flush_info.pixel_area), flush_info.pixel);
+    LOG_D("fb_flush_start idx=%d", drv_lcd_fb.flush_fb_idx);
+    LOG_D("window:"AreaString" fb:"AreaString" p_data=%p",
+          AreaParams(&flush_info.window), AreaParams(&flush_info.pixel_area), flush_info.pixel);
 
-        err = rt_device_control(p_lcd_dev, SF_GRAPHIC_CTRL_LCDC_FLUSH, &flush_info);
+    err = rt_device_control(p_lcd_dev, SF_GRAPHIC_CTRL_LCDC_FLUSH, &flush_info);
 
-        if (RT_EOK != err)  LOG_E("fb_flush_start err=%d", err);
-
-    }
-    else
+    if (RT_EOK != err)
     {
-        LOG_D("NoIntersect window:"AreaString" fb:"AreaString" p_data=%p",
-              AreaParams(p_fb_area), AreaParams(&win_area), p_fb->fb.p_data);
-        fb_flush_done(p_lcd_dev, p_fb->fb.p_data);
+        LOG_E("fb_flush_start err=%d", err);
+        fb_flush_done(p_lcd_dev, (void *)flush_info.pixel);
     }
-
 
     return err;
 }
@@ -1009,7 +1009,7 @@ uint32_t drv_lcd_fb_set(lcd_fb_desc_t *fb_desc)
         new_fb = true;
         p_fb_curr = &drv_lcd_fb.fbs[drv_lcd_fb.fb_total];
         memcpy(&p_fb_curr->fb, fb_desc, sizeof(lcd_fb_desc_t));
-        memcpy(&p_fb_curr->fb_clip, &invalid_area, sizeof(LCD_AreaDef));
+        lcd_area_copy(&p_fb_curr->fb_clip, &invalid_area);
         p_fb_curr->fb_flush_start_y = INT32_MIN;
         p_fb_curr->fb_valid_y1 = fb_desc->area.y1 - fb_desc->area.y0;
         p_fb_curr->fb_flushing_lcd = 0;
@@ -1102,6 +1102,11 @@ rt_err_t drv_lcd_fb_write_send(LCD_AreaDef *write_area, LCD_AreaDef *src_area, c
     if (area_intersect(&common_area, write_area, src_area))
     {
         rt_err_t err;
+        uint32_t events;
+        if (0 == drv_lcd_fb.write_fb_idx)
+            events = EVENT_FB0_FLUSH_DONE;
+        else
+            events = EVENT_FB1_FLUSH_DONE;
 
         LOG_D("\n\nWrite fb idx: %d, send=%d", drv_lcd_fb.write_fb_idx, send);
         LOG_D("Write area:"AreaString, AreaParams(write_area));
@@ -1116,6 +1121,17 @@ rt_err_t drv_lcd_fb_write_send(LCD_AreaDef *write_area, LCD_AreaDef *src_area, c
         wait_line_valid(&common_area, FB_COPY_EXP_MS);
 
         //Join to fb_clip
+        rt_base_t level = rt_hw_interrupt_disable();
+        if ((1 == p_fb->ready) && (0 == p_fb->fb_flushing_lcd))
+        {
+            /*
+                 Overwrite this fb:
+                 1. mark it as not ready to avoid flushing
+                 2. keep previous fb_clip, so that we can flush them together
+             */
+            p_fb->ready = 0;
+            rt_event_send(&drv_lcd_fb.event, events);
+        }
         if (is_area_valid(&p_fb->fb_clip))
         {
             p_fb->fb_clip.x0 = MIN(p_fb->fb_clip.x0, write_area->x0);
@@ -1126,19 +1142,14 @@ rt_err_t drv_lcd_fb_write_send(LCD_AreaDef *write_area, LCD_AreaDef *src_area, c
         else
         {
             //First time
-            memcpy(&p_fb->fb_clip, write_area, sizeof(LCD_AreaDef));
+            lcd_area_copy(&p_fb->fb_clip, write_area);
         }
+        rt_hw_interrupt_enable(level);
         LOG_D("Total fb_clip:"AreaString, AreaParams(&p_fb->fb_clip));
 
 
         if (send)
         {
-            uint32_t events;
-            if (0 == drv_lcd_fb.write_fb_idx)
-                events = EVENT_FB0_FLUSH_DONE;
-            else
-                events = EVENT_FB1_FLUSH_DONE;
-
             //Wait last flushing done.
             err = rt_event_recv(&drv_lcd_fb.event, events,
                                 RT_EVENT_FLAG_OR | RT_EVENT_FLAG_CLEAR,
