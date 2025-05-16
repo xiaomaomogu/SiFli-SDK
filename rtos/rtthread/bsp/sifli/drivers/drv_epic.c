@@ -99,6 +99,7 @@
 
 #define IS_DCACHED_RAM(addr) (((uint32_t) addr) >= (PSRAM_BASE))
 #define GPU_BLEND_EXP_MS     500
+#define mono_layer_addr HPSYS_RAM1_BASE  //Any accessable address for mono layer, SRAM is better
 
 
 #ifdef DRV_EPIC_NEW_API
@@ -1722,7 +1723,7 @@ rt_err_t drv_epic_fill(uint32_t dst_cf, uint8_t *dst,
 
 
         p_input_layers[1] = *p_output_canvas;
-        p_input_layers[1].data = (uint8_t *) p_input_layers;//Any accessable address for mono layer
+        p_input_layers[1].data = (uint8_t *) mono_layer_addr;
         p_input_layers[1].color_mode = EPIC_INPUT_MONO;
         p_input_layers[1].alpha = opa;
         p_input_layers[1].ax_mode = ALPHA_BLEND_RGBCOLOR;
@@ -1739,6 +1740,26 @@ rt_err_t drv_epic_fill(uint32_t dst_cf, uint8_t *dst,
 #endif /* EPIC_SUPPORT_MONOCHROME_LAYER&&EPIC_SUPPORT_MASK */
 
     }
+#ifndef SF32LB55X
+    else if (opa != 255)
+    {
+        EPIC_LayerConfigTypeDef *p_input_layers = &drv_epic.input_layers[0];
+
+        p_input_layers[1] = *p_output_canvas;
+        p_input_layers[1].data = (uint8_t *) mono_layer_addr;
+        p_input_layers[1].color_mode = EPIC_INPUT_MONO;
+        p_input_layers[1].alpha = opa;
+        p_input_layers[1].ax_mode = ALPHA_BLEND_RGBCOLOR;
+
+
+        p_input_layers[0] = *p_output_canvas;
+        p_input_layers[0].color_en = false;
+
+        p_output_canvas->color_en = false;
+
+        err = drv_epic_fill_ext(p_input_layers, 2, p_output_canvas, cbk);
+    }
+#else /* !SF32LB55X */
     else if (opa != 255)
     {
         EPIC_LayerConfigTypeDef *p_input_layer = &drv_epic.input_layers[0];
@@ -1749,6 +1770,7 @@ rt_err_t drv_epic_fill(uint32_t dst_cf, uint8_t *dst,
 
         err = drv_epic_fill_ext(p_input_layer, 1, p_output_canvas, cbk);
     }
+#endif /*SF32LB55X */
     else
     {
         err = drv_epic_fill_ext(NULL, 0, p_output_canvas, cbk);
@@ -2783,9 +2805,6 @@ static void draw_fill(EPIC_LayerConfigTypeDef *dst, EPIC_LayerConfigTypeDef *p_m
 {
     HAL_StatusTypeDef ret;
     EPIC_LayerConfigTypeDef output_layer;
-    uint32_t mask_addr = 0;
-    uint32_t fg_addr = 0;
-    uint32_t bg_addr = 0;
     EPIC_AreaTypeDef com_area;
 
     uint8_t opa = (uint8_t)((argb8888 >> 24) & 0xFF);
@@ -2814,19 +2833,35 @@ static void draw_fill(EPIC_LayerConfigTypeDef *dst, EPIC_LayerConfigTypeDef *p_m
             memcpy(&input_layers[2], p_mask_layer, sizeof(EPIC_LayerConfigTypeDef));
 
             input_layers[1] = output_layer;
-            input_layers[1].data = (uint8_t *) input_layers;//Any accessable address for mono layer
+            input_layers[1].data = (uint8_t *) mono_layer_addr;
             input_layers[1].color_mode = EPIC_INPUT_MONO;
             input_layers[1].alpha = opa;
             input_layers[1].ax_mode = ALPHA_BLEND_RGBCOLOR;
             input_layers[1].color_en = true;
-            mask_addr = (uint32_t) p_mask_layer->data;
 
 
             memcpy(&input_layers[0], dst, sizeof(EPIC_LayerConfigTypeDef));
             ret =  Call_Hal_Api(HAL_API_BLEND_EX, input_layers, (void *)((uint32_t)3), &output_layer);
         }
+#ifndef SF32LB55X
         else if (opa != 255)
         {
+            EPIC_LayerConfigTypeDef input_layers[2];
+
+            input_layers[1] = output_layer;
+            input_layers[1].data = (uint8_t *) mono_layer_addr;
+            input_layers[1].color_mode = EPIC_INPUT_MONO;
+            input_layers[1].alpha = opa;
+            input_layers[1].ax_mode = ALPHA_BLEND_RGBCOLOR;
+            input_layers[1].color_en = true;
+
+            memcpy(&input_layers[0], dst, sizeof(EPIC_LayerConfigTypeDef));
+            ret =  Call_Hal_Api(HAL_API_BLEND_EX, input_layers, (void *)((uint32_t)2), &output_layer);
+        }
+#else /* !SF32LB55X */
+        else if (opa != 255)
+        {
+
             EPIC_LayerConfigTypeDef input_layer = output_layer;
 
             input_layer.alpha = (0 == opa) ? 255 : (256 - opa);
@@ -2834,6 +2869,7 @@ static void draw_fill(EPIC_LayerConfigTypeDef *dst, EPIC_LayerConfigTypeDef *p_m
             output_layer.color_en = true;
             ret =  Call_Hal_Api(HAL_API_BLEND_EX, &input_layer, (void *)1, &output_layer);
         }
+#endif /*SF32LB55X */
         else
         {
             output_layer.color_en = true;
