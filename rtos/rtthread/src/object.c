@@ -22,10 +22,6 @@
     #include <dlmodule.h>
 #endif
 
-#ifdef AUDIO_USING_AUDPROC
-    #include <audioproc.h>
-#endif
-
 /*
  * define object_info for the number of rt_object_container items.
  */

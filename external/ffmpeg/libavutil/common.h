@@ -151,6 +151,16 @@ static av_always_inline av_const int64_t av_clip64_c(int64_t a, int64_t amin, in
     else               return a;
 }
 
+#ifndef __USAT
+#define __USAT(ARG1, ARG2) \
+ __extension__ \
+({                          \
+  uint32_t __RES, __ARG1 = (ARG1); \
+  __asm volatile ("usat %0, %1, %2" : "=r" (__RES) :  "I" (ARG2), "r" (__ARG1) : "cc" ); \
+  __RES; \
+ })
+#endif
+
 /**
  * Clip a signed integer value into the 0-255 range.
  * @param a value to clip
@@ -158,8 +168,12 @@ static av_always_inline av_const int64_t av_clip64_c(int64_t a, int64_t amin, in
  */
 static av_always_inline av_const uint8_t av_clip_uint8_c(int a)
 {
+#ifndef WIN32
+	return __USAT(a,8);
+#else
     if (a&(~0xFF)) return (~a)>>31;
     else           return a;
+#endif	
 }
 
 /**

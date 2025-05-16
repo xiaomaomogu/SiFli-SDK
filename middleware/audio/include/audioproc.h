@@ -1,6 +1,6 @@
 #ifndef AUDIOPROC_H
 #define AUDIOPROC_H
-
+#include <stdint.h>
 #include "ipc/ringbuffer.h"
 
 #define AUDIO_DBG_LVL           LOG_LVL_INFO

@@ -110,7 +110,19 @@ static int waveCurrentBlock;
 static HWAVEOUT hWaveOut; /* device handle */
 extern void *ffmpeg_alloc(size_t nbytes);
 extern void ffmpeg_free(void *p);
-
+static pcm_data_fun_cb pcm_data_fun =  NULL;
+void audio_set_pcm_callback(pcm_data_fun_cb fun)
+{
+    pcm_data_fun = fun;
+}
+int audio_server_set_public_volume(uint8_t volume)
+{
+    return 0;
+}
+int audio_server_set_public_speaker_mute(uint8_t is_mute)
+{
+    return 0;
+}
 audio_client_t audio_open(audio_type_t audio_type, audio_rwflag_t rwflag, audio_parameter_t *paramter, audio_server_callback_func callback, void *callback_userdata)
 {
     WAVEFORMATEX wfx; /* look this up in your documentation */

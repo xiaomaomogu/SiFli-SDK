@@ -1910,12 +1910,12 @@ uint8_t *ffmpeg_get_first_ezip_in_nand(const char *nand_address, uint32_t nand_s
     offset += 8;
     if (!memcmp(SIFLI_MEDIA_MAGIC1, ezip_header.header, 8))
     {
-        lv_img_decode_flash_read((uint32_t)nand_address + offset, &ezip_header.duration_seconds, sizeof(ezip_header) - 8 - 4); //old tools no max_frame_size
+        lv_img_decode_flash_read((uint32_t)nand_address + offset, (uint8_t *)&ezip_header.duration_seconds, sizeof(ezip_header) - 8 - 4); //old tools no max_frame_size
         offset += sizeof(ezip_header) - 8 - 4;
     }
     else if (!memcmp(SIFLI_MEDIA_MAGIC2, ezip_header.header, 8))
     {
-        lv_img_decode_flash_read((uint32_t)nand_address + offset, &ezip_header.max_frame_size, sizeof(ezip_header) - 8);
+        lv_img_decode_flash_read((uint32_t)nand_address + offset, (uint8_t *)&ezip_header.max_frame_size, sizeof(ezip_header) - 8);
         offset += sizeof(ezip_header) - 8;
     }
     else

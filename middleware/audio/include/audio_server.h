@@ -140,6 +140,7 @@ void audio_time_print(void);
 void audio_uplink_time_print(void);
 void audio_dnlink_time_print(void);
 typedef int (*audio_device_input_callback)(audio_server_callback_cmt_t cmd, const uint8_t *buffer, uint32_t size);
+typedef void (*pcm_data_fun_cb)(const int16_t *data, uint32_t len, audio_parameter_t *param);
 
 struct audio_device
 {
@@ -287,6 +288,7 @@ uint8_t audio_server_bt_voice_ind(uint8_t *fifo, uint8_t len);
   */
 int audio_hfp_uplink_write(audio_client_t handle, uint8_t *data, uint32_t data_len);
 
+void audio_set_pcm_callback(pcm_data_fun_cb fun);
 
 void auido_gain_pcm(int16_t *data, rt_size_t data_size, uint8_t shift);
 void bt_rx_event_to_audio_server(); //only for bt
