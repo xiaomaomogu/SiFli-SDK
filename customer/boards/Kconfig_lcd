@@ -372,6 +372,105 @@ if BSP_USING_LCD
             select LCD_USING_OPM060E9_V10
             select BSP_LCDC_USING_EPD_8BIT
 
+
+        
+#       config AM196Q410502LK_196_410x502
+#           bool "YUYING AM196Q410502LK_196_410x502"
+#           select LCD_USING_CO5300
+#           select TSC_USING_CST820 if BSP_USING_TOUCHD
+#           select BSP_LCDC_USING_QADSPI
+#           select LCD_USING_PWM_AS_BACKLIGHT
+#           if AM196Q410502LK_196_410x502
+#               config LCD_MAX_CLK_FREQ
+#                   int "Max clock frequency in Hz"
+#                   default 30000000
+#               config LCD_CO5300_VSYNC_ENABLE
+#                   bool "Enable LCD VSYNC (TE signal)"
+#                   def_bool y 
+#           endif
+#            
+#        
+#        config AM178Q368448LK_178_368x448
+#            bool "YUYING AM178Q368448LK_178_368x448"
+#            select LCD_USING_CO5300
+#            select TSC_USING_CHSC6417 if BSP_USING_TOUCHD
+#            select BSP_LCDC_USING_QADSPI
+#            select LCD_USING_PWM_AS_BACKLIGHT
+#            if AM178Q368448LK_178_368x448
+#                config LCD_MAX_CLK_FREQ
+#                    int "Max clock frequency in Hz"
+#                    default 40000000
+#                config LCD_CO5300_VSYNC_ENABLE
+#                    bool "Enable LCD VSYNC (TE signal)"
+#                    def_bool y
+#            endif
+#
+#     
+#        config AM151Q466466LK_151_466x466_C
+#            bool "YUYING AM151Q466466LK_151_466x466_C"
+#            select LCD_USING_CO5300
+#            select TSC_USING_CST820 if BSP_USING_TOUCHD
+#            select BSP_LCDC_USING_QADSPI
+#            select LCD_USING_PWM_AS_BACKLIGHT
+#            if AM151Q466466LK_151_466x466_C
+#                config LCD_CO5300_VSYNC_ENABLE
+#                    bool "Enable LCD VSYNC (TE signal)"
+#                    def_bool y
+#            endif
+#
+#        
+#        config AM160Q480480LK_160_480x480_C
+#            bool "YUYING AM160Q480480LK_160_480x480_C"
+#            select LCD_USING_CH13613
+#            select TSC_USING_CHSC6417 if BSP_USING_TOUCHD
+#            select BSP_LCDC_USING_QADSPI
+#            select LCD_USING_PWM_AS_BACKLIGHT
+#            if AM160Q480480LK_160_480x480_C
+#                config LCD_CH13613_VSYNC_ENABLE
+#                    bool "Enable LCD VSYNC (TE signal)"
+#                    def_bool y
+#            endif
+#
+#  
+#        config AM201Q240296LK_201_240x296
+#            bool "YUYING AM201Q240296LK_201_240x296"
+#            select LCD_USING_ICNA3306
+#            select TSC_USING_CST816 if BSP_USING_TOUCHD
+#            select BSP_LCDC_USING_QADSPI
+#            select LCD_USING_PWM_AS_BACKLIGHT
+#            if AM201Q240296LK_201_240x296
+#                config LCD_ICNA3306_VSYNC_ENABLE
+#                    bool "Enable LCD VSYNC (TE signal)"
+#                    def_bool y
+#            endif
+#
+#     
+#        config AM200Q460460LK_200_460x460
+#            bool "YUYING AM200Q460460LK_200_460x460"
+#            select LCD_USING_CO5300
+#            select TSC_USING_CST820 if BSP_USING_TOUCHD
+#            select BSP_LCDC_USING_QADSPI
+#            select LCD_USING_PWM_AS_BACKLIGHT
+#            if AM200Q460460LK_200_460x460
+#                config LCD_CO5300_VSYNC_ENABLE
+#                    bool "Enable LCD VSYNC (TE signal)"
+#                    def_bool y
+#            endif
+#
+# 
+#        config H0198S005AMT005_V0_195_410x502
+#            bool "HUAXIA H0198S005AMT005_V0_195_410x502"
+#            select LCD_USING_CO5300
+#            select TSC_USING_CST816 if BSP_USING_TOUCHD
+#            select BSP_LCDC_USING_QADSPI
+#            select LCD_USING_PWM_AS_BACKLIGHT
+#            if H0198S005AMT005_V0_195_410x502
+#                config LCD_CO5300_VSYNC_ENABLE
+#                    bool "Enable LCD VSYNC (TE signal)"
+#                    def_bool y
+#            endif
+
+
     endchoice
 
     config LCD_HOR_RES_MAX
@@ -415,6 +514,14 @@ if BSP_USING_LCD
         default 780 if LCD_USING_TFT_CO5300_DUAL
         default 1448 if LCD_USING_EDP_OPM060E9_V10
         default 1032 if LCD_USING_EDP_YZC052_V105
+        default 410 if AM196Q410502LK_196_410x502
+        default 368 if AM178Q368448LK_178_368x448
+        default 466 if AM151Q466466LK_151_466x466_C
+        default 480 if AM160Q480480LK_160_480x480_C
+        default 240 if AM201Q240296LK_201_240x296
+        default 460 if AM200Q460460LK_200_460x460
+        default 410 if H0198S005AMT005_V0_195_410x502
+
 
         
     config LCD_VER_RES_MAX
@@ -458,6 +565,14 @@ if BSP_USING_LCD
         default 450 if LCD_USING_TFT_CO5300_DUAL
         default 1072 if LCD_USING_EDP_OPM060E9_V10
         default 758 if LCD_USING_EDP_YZC052_V105
+        default 502 if AM196Q410502LK_196_410x502
+        default 448 if AM178Q368448LK_178_368x448
+        default 466 if AM151Q466466LK_151_466x466_C
+        default 480 if AM160Q480480LK_160_480x480_C
+        default 296 if AM201Q240296LK_201_240x296
+        default 460 if AM200Q460460LK_200_460x460
+        default 502 if H0198S005AMT005_V0_195_410x502
+
 
     config LCD_DPI
         int
@@ -500,6 +615,16 @@ if BSP_USING_LCD
         default 300 if LCD_USING_TFT_CO5300_DUAL
         default 300 if LCD_USING_EDP_OPM060E9_V10
         default 212 if LCD_USING_EDP_YZC052_V105
+        default 300 if AM196Q410502LK_196_410x502
+        default 300 if AM178Q368448LK_178_368x448
+        default 300 if AM151Q466466LK_151_466x466_C
+        default 300 if AM160Q480480LK_160_480x480_C
+        default 300 if AM201Q240296LK_201_240x296
+        default 300 if AM200Q460460LK_200_460x460
+        default 300 if H0198S005AMT005_V0_195_410x502
+
+        
+
 
     config BSP_USING_LCD_FRAMEBUFFER
         bool

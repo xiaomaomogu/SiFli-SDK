@@ -231,6 +231,25 @@ config LCD_USING_OPM060E9_V10
     bool
     default n
 
+config LCD_USING_ICNA3306
+    bool
+    default n
+
+config TSC_USING_CST820
+    bool
+    default n
+
+config TSC_USING_CHSC6417
+    bool
+    default n
+
+config LCD_USING_CH13613
+    bool
+    default n
+
+
+
+
 # LCD interfaces
 config BSP_LCDC_USING_SPI_NODCX_1DATA
     def_bool n 

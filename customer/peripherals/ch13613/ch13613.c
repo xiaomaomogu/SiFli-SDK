@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * @file   co5300.c
+  * @file   ch13613.c
   * @author Sifli software development team
-  * @brief   This file includes the LCD driver for CO5300 LCD.
+  * @brief   This file includes the LCD driver for CH13613 LCD.
   * @attention
   ******************************************************************************
 */
@@ -13,57 +13,31 @@
 #include "board.h"
 #include "drv_io.h"
 #include "drv_lcd.h"
-#define DBG_TAG               "co5300"
+#define DBG_TAG               "ch13613"
 #define DBG_LVL               DBG_INFO
 #include <rtdbg.h>
 
-
-
-
-
-#ifdef AM196Q410502LK_196_410x502
-    #define COL_OFFSET (22)
+//#define ROW_OFFSET  (0x00)
+//#define COL_OFFSET  (0x00)
+#ifdef AM160Q480480LK_160_480x480_C
     #define ROW_OFFSET (0)
-#elif AM178Q368448LK_178_368x448
-    #define COL_OFFSET (16)
-    #define ROW_OFFSET (0)
-#elif AM151Q466466LK_151_466x466_C
-    #define COL_OFFSET (6)
-    #define ROW_OFFSET (0)
-#elif AM200Q460460LK_200_460x460
-    #define COL_OFFSET (10)
-    #define ROW_OFFSET (0)
-#elif H0198S005AMT005_V0_195_410x502
-    #define COL_OFFSET (44)
-    #define ROW_OFFSET (0)
-#else
-    #define ROW_OFFSET  (0x00)
-    #define COL_OFFSET  (0x00)
-#endif
-
+    #define COL_OFFSET (300)
+#endif //AM160Q480480LK_160_480x480_C
 /**
-  * @brief CO5300 chip IDs
+  * @brief CH13613 chip IDs
   */
 
-#ifdef AM196Q410502LK_196_410x502
-    #define LCD_ID                  0x530001
-#elif defined(AM151Q466466LK_151_466x466_C)
-    #define LCD_ID                  0x530001
-#elif defined(AM200Q460460LK_200_460x460)
-    #define LCD_ID                  0x530001
-#elif defined(H0198S005AMT005_V0_195_410x502)
-    #define LCD_ID                  0x530001
-#elif defined(AM178Q368448LK_178_368x448)
-    #define LCD_ID                  0x530001
-#else
-    #define LCD_ID                  0x331100
-#endif
+#define LCD_ID                  0x8000
+
 
 /**
-  * @brief  CO5300 Size
+  * @brief  CH13613 Size
   */
-#define  LCD_PIXEL_WIDTH    (LCD_HOR_RES_MAX)
-#define  LCD_PIXEL_HEIGHT   (LCD_VER_RES_MAX)
+#ifdef AM160Q480480LK_160_480x480_C
+    #define  LCD_PIXEL_WIDTH    LCD_HOR_RES_MAX
+    #define  LCD_PIXEL_HEIGHT   (LCD_VER_RES_MAX )
+#endif //AM160Q480480LK_160_480x480_C
+
 
 /**
  *  @brief LCD_OrientationTypeDef
@@ -74,7 +48,7 @@
 #define REG_ORIENTATION_LANDSCAPE_ROT180 (0x02) /* Landscape rotated 180 orientation choice of LCD screen */
 
 /**
-  * @brief  CO5300 Registers
+  * @brief  CH13613 Registers
   */
 #define REG_SW_RESET           0x01
 #define REG_LCD_ID             0x04
@@ -124,24 +98,18 @@
 
 static LCDC_InitTypeDef lcdc_int_cfg_qadspi =
 {
-#if defined(LCD_MAX_CLK_FREQ)
-    .freq = LCD_MAX_CLK_FREQ,        //CO5300 RGB565 only support 50000000,  RGB888 support 60000000
-#elif AM196Q410502LK_196_410x502 || AM178Q368448LK_178_368x448 || AM151Q466466LK_151_466x466_C || AM200Q460460LK_200_460x460 || H0198S005AMT005_V0_195_410x502
-    .freq = 50000000,        //CO5300 RGB565 only support 50000000,  RGB888 support 60000000
-#else
-    .freq = 48000000,
-#endif
-
+    .lcd_itf = QAD_SPI_ITF, // LCDC_INTF_SPI_NODCX_1DATA
+    .freq = 50000000,        //CH13613 RGB565 only support 50000000,  RGB888 support 60000000
     .color_mode = LCDC_PIXEL_FORMAT_RGB565,//LCDC_PIXEL_FORMAT_RGB565,
 
     .cfg = {
         .spi = {
             .dummy_clock = 0,
-#ifdef LCD_CO5300_VSYNC_ENABLE
+#ifdef LCD_CH13613_VSYNC_ENABLE
             .syn_mode = HAL_LCDC_SYNC_VER,
 #else
             .syn_mode = HAL_LCDC_SYNC_DISABLE,
-#endif /* LCD_CO5300_VSYNC_ENABLE */
+#endif /* LCD_CH13613_VSYNC_ENABLE */
             .vsyn_polarity = 1,
             //default_vbp=2, frame rate=82, delay=115us,
             //TODO: use us to define delay instead of cycle, delay_cycle=115*48
@@ -183,24 +151,11 @@ static void LCD_ReadMode(LCDC_HandleTypeDef *hlcdc, bool enable)
 
 }
 
-static void LCD_Clear(LCDC_HandleTypeDef *hlcdc)
-{
-    /*Clear gram*/
-    HAL_LCDC_Next_Frame_TE(hlcdc, 0);
-    LCD_SetRegion(hlcdc, 0, 0, LCD_PIXEL_WIDTH, LCD_PIXEL_HEIGHT);
-    HAL_LCDC_LayerSetFormat(hlcdc, HAL_LCDC_LAYER_DEFAULT, LCDC_PIXEL_FORMAT_RGB565);
-    HAL_LCDC_LayerDisable(hlcdc, HAL_LCDC_LAYER_DEFAULT);
-    HAL_LCDC_SetBgColor(hlcdc, 0, 0, 0);
-    HAL_LCDC_SendLayerData2Reg(hlcdc, ((0x32 << 24) | (REG_WRITE_RAM << 8)), 4);
-    HAL_LCDC_LayerEnable(hlcdc, HAL_LCDC_LAYER_DEFAULT);
-
-}
-
 
 static void LCD_Drv_Init(LCDC_HandleTypeDef *hlcdc)
 {
     uint8_t   parameter[14];
-    /* Initialize CO5300 low level bus layer ----------------------------------*/
+    /* Initialize CH13613 low level bus layer ----------------------------------*/
     memcpy(&hlcdc->Init, &lcdc_int_cfg, sizeof(LCDC_InitTypeDef));
     HAL_LCDC_Init(hlcdc);
 
@@ -216,47 +171,35 @@ static void LCD_Drv_Init(LCDC_HandleTypeDef *hlcdc)
         return;
     }
 
-#ifdef AM196Q410502LK_196_410x502
-    parameter[0] = 0x00;
-#elif defined(AM151Q466466LK_151_466x466_C)
-    parameter[0] = 0x00;
-#elif defined(AM178Q368448LK_178_368x448)
-    parameter[0] = 0x00;
-#elif defined(AM200Q460460LK_200_460x460)
-    parameter[0] = 0x00;
-#elif defined(H0198S005AMT005_V0_195_410x502)
-    parameter[0] = 0x00;
-#else
-    parameter[0] = 0x20;
-#endif
-    LCD_WriteReg(hlcdc, 0xFE, parameter, 1); //Pass word unlock
-    parameter[0] = 0x5A;
-    LCD_WriteReg(hlcdc, 0xF4, parameter, 1);
-    parameter[0] = 0x59;
-    LCD_WriteReg(hlcdc, 0xF5, parameter, 1);
-
-    parameter[0] = 0x20;
-    LCD_WriteReg(hlcdc, 0xFE, parameter, 1); //Pass word lock
-    parameter[0] = 0xA5;
-    LCD_WriteReg(hlcdc, 0xF4, parameter, 1);
-    parameter[0] = 0xA5;
-    LCD_WriteReg(hlcdc, 0xF5, parameter, 1);
-
     parameter[0] = 0x00;
     LCD_WriteReg(hlcdc, 0xFE, parameter, 1);
+    parameter[0] = 0x50;
+    LCD_WriteReg(hlcdc, 0xF0, parameter, 1);
+    parameter[0] = 0x78;
+    parameter[1] = 0x70;
+    LCD_WriteReg(hlcdc, 0xB1, parameter, 2);
     parameter[0] = 0x80;
     LCD_WriteReg(hlcdc, 0xC4, parameter, 1);
-    parameter[0] = 0x55;
-    LCD_WriteReg(hlcdc, 0x3A, parameter, 1);
     parameter[0] = 0x00;
     LCD_WriteReg(hlcdc, 0x35, parameter, 1);
+    parameter[0] = 0x00;
+    LCD_WriteReg(hlcdc, 0x36, parameter, 1);
+
+    parameter[0] = 0x55;
+    LCD_WriteReg(hlcdc, 0x3A, parameter, 1);
     parameter[0] = 0x20;
     LCD_WriteReg(hlcdc, 0x53, parameter, 1);
-    //parameter[0] = 0x10;
-    //ICNA3310_WriteReg(hlcdc, 0x51, parameter, 1);
-
-    parameter[0] = 0xff;
+    parameter[0] = 0xFF;
+    LCD_WriteReg(hlcdc, 0x51, parameter, 1);
+    parameter[0] = 0xFF;
     LCD_WriteReg(hlcdc, 0x63, parameter, 1);
+
+    parameter[0] = 0x10;
+    LCD_WriteReg(hlcdc, 0x64, parameter, 1);
+    parameter[0] = 0x01;
+    LCD_WriteReg(hlcdc, 0x67, parameter, 1);
+    parameter[0] = 0x31;
+    LCD_WriteReg(hlcdc, 0x68, parameter, 1);
 
     parameter[0] = (COL_OFFSET >> 8) & 0xFF;
     parameter[1] = COL_OFFSET & 0xFF;
@@ -269,14 +212,15 @@ static void LCD_Drv_Init(LCDC_HandleTypeDef *hlcdc)
     parameter[3] = (LCD_PIXEL_HEIGHT + ROW_OFFSET - 1) & 0xFF;
     LCD_WriteReg(hlcdc, 0x2B, parameter, 4);
 
-    LCD_WriteReg(hlcdc, 0x11, (uint8_t *)NULL, 0);
-    //sleep out+display on
+
+    parameter[0] = 0x00;
+    LCD_WriteReg(hlcdc, 0x11, parameter, 1);
     rt_thread_delay(120);
-    LCD_WriteReg(hlcdc, 0x29, (uint8_t *)NULL, 0);
-    rt_thread_delay(70);
+
+    parameter[0] = 0x00;
+    LCD_WriteReg(hlcdc, 0x29, parameter, 1);
+    rt_thread_delay(120);
 }
-
-
 
 
 /**
@@ -303,20 +247,11 @@ static uint32_t LCD_ReadID(LCDC_HandleTypeDef *hlcdc)
 {
     uint32_t data;
     data = LCD_ReadData(hlcdc, REG_LCD_ID, 3);
-    rt_kprintf("\nCO5300_ReadID 0x%x \n", data);
+    rt_kprintf("\nCH13613_ReadID 0x%x \n", data);
     if (data == LCD_ID)
-        DEBUG_PRINTF("LCD module use CO5300 IC \n");
-#ifdef AM196Q410502LK_196_410x502
-    data = LCD_ID; // force to return CO5300 ID
-#elif defined(AM178Q368448LK_178_368x448)
-    data = LCD_ID;
-#elif defined(AM151Q466466LK_151_466x466_C)
-    data = LCD_ID;
-#elif defined(AM200Q460460LK_200_460x460)
-    data = LCD_ID;
-#elif defined(H0198S005AMT005_V0_195_410x502)
-    data = LCD_ID;
-#endif
+        DEBUG_PRINTF("LCD module use CH13613 IC \n");
+
+    data = LCD_ID; // force to return CH13613 ID
     return data;
 }
 
@@ -443,7 +378,7 @@ static uint32_t LCD_ReadPixel(LCDC_HandleTypeDef *hlcdc, uint16_t Xpos, uint16_t
 {
     uint8_t  r, g, b;
     uint32_t ret_v, read_value;
-    DEBUG_PRINTF("CO5300_ReadPixel[%d,%d]\n", Xpos, Ypos);
+    DEBUG_PRINTF("CH13613_ReadPixel[%d,%d]\n", Xpos, Ypos);
 
     LCD_SetRegion(hlcdc, Xpos, Ypos, Xpos, Ypos);
 
@@ -545,7 +480,7 @@ static void LCD_IdleModeOff(LCDC_HandleTypeDef *hlcdc)
 }
 
 
-static const LCD_DrvOpsDef CO5300_drv =
+static const LCD_DrvOpsDef CH13613_drv =
 {
     LCD_Init,
     LCD_ReadID,
@@ -565,8 +500,8 @@ static const LCD_DrvOpsDef CO5300_drv =
 
 };
 
-LCD_DRIVER_EXPORT(co5300, LCD_ID, &lcdc_int_cfg,
-                  &CO5300_drv,
+LCD_DRIVER_EXPORT(ch13613, LCD_ID, &lcdc_int_cfg,
+                  &CH13613_drv,
                   LCD_PIXEL_WIDTH,
                   LCD_PIXEL_HEIGHT,
                   2);
