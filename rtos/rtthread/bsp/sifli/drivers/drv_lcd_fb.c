@@ -785,36 +785,6 @@ static rt_err_t write_fb_async(LCD_AreaDef *clip_area, LCD_AreaDef *src_area, co
 
     }
 #endif /* ENABLE_GP_DMA_COPY */
-#ifdef ENABLE_AES_COPY
-    else if (use_aes)
-    {
-        RT_ASSERT(len > 16);
-        uint32_t aes_copy_bytes = len & (0xFFFFFFF0);
-        uint16_t memcopy_bytes = len - aes_copy_bytes;
-
-        drv_lcd_fb.src = src_line_addr;
-        drv_lcd_fb.dst = dst_line_addr;
-        drv_lcd_fb.dma_cb = cb;
-
-
-        AES_IOTypeDef io_data;
-        io_data.in_data = (uint8_t *)src_line_addr;
-        io_data.out_data = (uint8_t *)dst_line_addr;
-        io_data.size = aes_copy_bytes;
-        err = drv_aes_copy_async(&io_data, AES_CopyCb);
-        RT_ASSERT(RT_EOK == err);
-
-        if (memcopy_bytes > 0)
-        {
-            memcpy((uint8_t *)(dst_line_addr + aes_copy_bytes), (uint8_t *)(src_line_addr + aes_copy_bytes), memcopy_bytes);
-            mpu_dcache_clean((uint8_t *)(dst_line_addr + aes_copy_bytes), memcopy_bytes);
-        }
-#ifdef DRV_LCD_FB_STATISTICS
-        drv_lcd_fb.aes_copy_cnt++;
-#endif /* DRV_LCD_FB_STATISTICS */
-
-    }
-#endif /* ENABLE_AES_COPY */
     else if (use_extdma)
     {
         EXT_DMA_CmprTypeDef cmpr;
@@ -859,6 +829,36 @@ static rt_err_t write_fb_async(LCD_AreaDef *clip_area, LCD_AreaDef *src_area, co
 #endif /* DRV_LCD_FB_STATISTICS */
 
     }
+#ifdef ENABLE_AES_COPY
+    else if (use_aes)
+    {
+        RT_ASSERT(len > 16);
+        uint32_t aes_copy_bytes = len & (0xFFFFFFF0);
+        uint16_t memcopy_bytes = len - aes_copy_bytes;
+
+        drv_lcd_fb.src = src_line_addr;
+        drv_lcd_fb.dst = dst_line_addr;
+        drv_lcd_fb.dma_cb = cb;
+
+
+        AES_IOTypeDef io_data;
+        io_data.in_data = (uint8_t *)src_line_addr;
+        io_data.out_data = (uint8_t *)dst_line_addr;
+        io_data.size = aes_copy_bytes;
+        err = drv_aes_copy_async(&io_data, AES_CopyCb);
+        RT_ASSERT(RT_EOK == err);
+
+        if (memcopy_bytes > 0)
+        {
+            memcpy((uint8_t *)(dst_line_addr + aes_copy_bytes), (uint8_t *)(src_line_addr + aes_copy_bytes), memcopy_bytes);
+            mpu_dcache_clean((uint8_t *)(dst_line_addr + aes_copy_bytes), memcopy_bytes);
+        }
+#ifdef DRV_LCD_FB_STATISTICS
+        drv_lcd_fb.aes_copy_cnt++;
+#endif /* DRV_LCD_FB_STATISTICS */
+
+    }
+#endif /* ENABLE_AES_COPY */
     else if (use_epic)
     {
 #if defined(BSP_USING_EPIC) && !defined(DRV_EPIC_NEW_API)
