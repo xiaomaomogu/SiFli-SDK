@@ -51,6 +51,17 @@
                }
             },
             {
+                "offset": "0x00000000",
+                "max_size": "0x00080000",
+                "tags": [],
+                "ftab": {
+                    "name": "dfu",
+                    "address": [
+                        "xip"
+                    ]
+                }
+            },
+            {
                 "offset": "0x00200000", 
                 "max_size": "0x00600000", 
                 "tags": [
@@ -70,6 +81,14 @@
                     "HCPU_FLASH_CODE"
                 ],
                 "exec": "main"
+            },
+            {
+                "offset": "0x00000000",
+                "max_size": "0x00080000",
+                "tags": [
+                    "DFU_PSRAM_CODE"
+                ],
+                "exec": "dfu"
             }
         ]
     },    
@@ -106,6 +125,34 @@
             }, 
             {
                 "offset": "0x00200000", 
+                "max_size": "0x00080000",
+                "tags": [
+                    "DFU_FLASH_CODE"
+                ],
+                "img": "dfu",
+                "ftab": {
+                    "name": "dfu",
+                    "address": [
+                        "base"
+                    ]
+                }
+            },
+            {
+                "offset": "0x00280000",
+                "max_size": "0x00020000",
+                "tags": [
+                    "DFU_INFO_REGION"
+                ]
+            },
+            {
+                "offset": "0x002A0000",
+                "max_size": "0x00360000",
+                "tags": [
+                    "DFU_DOWNLOAD_REGION"
+                ]
+            },
+            {
+                "offset": "0x00600000", 
                 "max_size": "0x00400000", 
                 "img": "fs_root", 
                 "tags": [
@@ -113,14 +160,14 @@
                 ]
             }, 
             {
-                "offset": "0x00600000", 
+                "offset": "0x00A00000", 
                 "max_size": "0x00004000", 
                 "tags": [
                     "KVDB_DFU_REGION"
                 ]
             }, 
             {
-                "offset": "0x00604000", 
+                "offset": "0x00A04000", 
                 "max_size": "0x00004000", 
                 "tags": [
                     "KVDB_BLE_REGION"
