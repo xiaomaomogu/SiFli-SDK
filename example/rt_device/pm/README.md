@@ -2,7 +2,7 @@
 源码路径：example\rt_device\pm
 ## 支持的平台
 例程可以运行在以下开发板.
-* em-lb566
+* sf32lb56-devkit-lcd_n16r12n1
 * eh-lb551
 * em-lb525
 * em-lb587
