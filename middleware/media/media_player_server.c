@@ -1343,12 +1343,18 @@ static void ezip_read_thread(void *p)
             {
                 if (thiz->is_nand)
                 {
-                    ezip_flash_seek(thiz, sizeof(ezip_media_t), SEEK_SET);
+                    if (thiz->is_sifli_ezip_memdia == 1)
+                        ezip_flash_seek(thiz, sizeof(ezip_media_t) - 4, SEEK_SET);
+                    else
+                        ezip_flash_seek(thiz, sizeof(ezip_media_t), SEEK_SET);
                 }
                 else
                 {
 #if RT_USING_DFS
-                    lseek(thiz->ezip_fd, sizeof(ezip_media_t), SEEK_SET);
+                    if (thiz->is_sifli_ezip_memdia == 1)
+                        lseek(thiz->ezip_fd, sizeof(ezip_media_t) - 4, SEEK_SET);
+                    else
+                        lseek(thiz->ezip_fd, sizeof(ezip_media_t), SEEK_SET);
 #endif
                 }
                 thiz->frame_index = 0;

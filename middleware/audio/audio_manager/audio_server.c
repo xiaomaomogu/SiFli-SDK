@@ -3640,6 +3640,22 @@ put_raw:
         client_debug_full(handle);
         return 0;
     }
+#if MIX_STEREO_TO_MONO
+    /*mix left & right channel for single speaker*/
+    if (handle->parameter.write_channnel_num == 2)
+    {
+        int16_t *p = (int16_t *)data;
+        int16_t left, right;
+        uint32_t samples = data_len >> 1;
+        for (uint32_t i = 0; i + 1 < samples; i += 2)
+        {
+            left = p[i];
+            right = p[i+1];
+            p[i] = (left >> 1) + (right >> 1);
+            p[i+1] = p[i];
+        }
+    }
+#endif
     handle->debug_full = 0;
     len = rt_ringbuffer_put(&handle->ring_buf, data, data_len);
     return data_len;
