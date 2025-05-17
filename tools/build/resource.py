@@ -744,7 +744,11 @@ def GenFtabCFile(src, output_name, imgs_info):
                     else:
                         print('WARNING: img "{}" not found'.format(proj_name))
 
-    assert 'bootloader' in ftab, "bootloader not configured"
+    bootloader_needed = not building.GetDepend('SOC_SF32LB55X')
+    if bootloader_needed:
+        assert 'bootloader' in ftab, "bootloader not configured"
+    elif 'bootloader' in ftab:
+        bootloader_needed = True
     # assert 'main' in ftab, "main not configured"
 
     InitIndentation()
@@ -769,16 +773,18 @@ def GenFtabCFile(src, output_name, imgs_info):
         '.ftab[0] = {.base = FLASH_TABLE_START_ADDR,      .size = FLASH_TABLE_SIZE,      .xip_base = 0, .flags = 0},')
     s += MakeLine(
         '.ftab[1] = {.base = FLASH_CAL_TABLE_START_ADDR,  .size = FLASH_CAL_TABLE_SIZE,  .xip_base = 0, .flags = 0},')
-    s += MakeLine('.ftab[3] = {{.base = 0x{:08X}, .size = 0x{:08X},  .xip_base = 0x{:08X}, .flags = 0}},'.format(
-        ftab['bootloader']['base'], ftab['bootloader']['max_size'], ftab['bootloader']['xip']))
+    if bootloader_needed:
+        s += MakeLine('.ftab[3] = {{.base = 0x{:08X}, .size = 0x{:08X},  .xip_base = 0x{:08X}, .flags = 0}},'.format(
+            ftab['bootloader']['base'], ftab['bootloader']['max_size'], ftab['bootloader']['xip']))
     if 'main' in ftab:
         s += MakeLine('.ftab[4] = {{.base = 0x{:08X}, .size = 0x{:08X},  .xip_base = 0x{:08X}, .flags = 0}},'.format(
             ftab['main']['base'], ftab['main']['max_size'], ftab['main']['xip']))
     s += MakeLine(
         '.ftab[5] = {.base = FLASH_BOOT_PATCH_START_ADDR, .size = FLASH_BOOT_PATCH_SIZE, .xip_base = '
         'BOOTLOADER_PATCH_CODE_ADDR, .flags = 0},')
-    s += MakeLine('.ftab[7] = {{.base = 0x{:08X}, .size = 0x{:08X},  .xip_base = 0x{:08X}, .flags = 0}},'.format(
-        ftab['bootloader']['base'], ftab['bootloader']['max_size'], ftab['bootloader']['xip']))
+    if bootloader_needed:
+        s += MakeLine('.ftab[7] = {{.base = 0x{:08X}, .size = 0x{:08X},  .xip_base = 0x{:08X}, .flags = 0}},'.format(
+            ftab['bootloader']['base'], ftab['bootloader']['max_size'], ftab['bootloader']['xip']))
     if 'main' in ftab:
         s += MakeLine('.ftab[8] = {{.base = 0x{:08X}, .size = 0x{:08X},  .xip_base = 0x{:08X}, .flags = 0}},'.format(
             ftab['main']['base'], ftab['main']['max_size'], ftab['main']['xip']))
@@ -802,9 +808,12 @@ def GenFtabCFile(src, output_name, imgs_info):
         '.imgs[DFU_FLASH_IMG_IDX(DFU_FLASH_IMG_HCPU)] = {{.length = 0x{:08X}, .blksize = 512, .flags = DFU_FLAG_AUTO}},'.format(
             size))
     s += MakeLine('.imgs[DFU_FLASH_IMG_IDX(DFU_FLASH_IMG_LCPU)] = {.length = 0xFFFFFFFF},')
-    s += MakeLine(
-        '.imgs[DFU_FLASH_IMG_IDX(DFU_FLASH_IMG_BL)] = {{.length = 0x{:08X}, .blksize = 512, .flags = DFU_FLAG_AUTO}},'.format(
-            bl_size))
+    if bootloader_needed:
+        s += MakeLine(
+            '.imgs[DFU_FLASH_IMG_IDX(DFU_FLASH_IMG_BL)] = {{.length = 0x{:08X}, .blksize = 512, .flags = DFU_FLAG_AUTO}},'.format(
+                bl_size))
+    else:
+        s += MakeLine('.imgs[DFU_FLASH_IMG_IDX(DFU_FLASH_IMG_BL)] = {.length = 0xFFFFFFFF},')
     s += MakeLine('.imgs[DFU_FLASH_IMG_IDX(DFU_FLASH_IMG_BOOT)] = {.length = 0xFFFFFFFF},')
     s += MakeLine('.imgs[DFU_FLASH_IMG_IDX(DFU_FLASH_IMG_LCPU2)] = {.length = 0xFFFFFFFF},')
     s += MakeLine('.imgs[DFU_FLASH_IMG_IDX(DFU_FLASH_IMG_BCPU2)] = {.length = 0xFFFFFFFF},')
@@ -848,9 +857,12 @@ def GenFtabCFile(src, output_name, imgs_info):
     else:
         s += MakeLine('.running_imgs[CORE_HCPU] = (struct image_header_enc *)0xFFFFFFFF,')
     s += MakeLine('.running_imgs[CORE_LCPU] = (struct image_header_enc *)0xFFFFFFFF,')
-    s += MakeLine(
-        '.running_imgs[CORE_BL] = (struct image_header_enc *)&(((struct sec_configuration '
-        '*)FLASH_TABLE_START_ADDR)->imgs[DFU_FLASH_IMG_IDX(DFU_FLASH_IMG_BL)]),')
+    if bootloader_needed:
+        s += MakeLine(
+            '.running_imgs[CORE_BL] = (struct image_header_enc *)&(((struct sec_configuration '
+            '*)FLASH_TABLE_START_ADDR)->imgs[DFU_FLASH_IMG_IDX(DFU_FLASH_IMG_BL)]),')
+    else:
+        s += MakeLine('.running_imgs[CORE_BL] = (struct image_header_enc *)0xFFFFFFFF,')    
     s += MakeLine('.running_imgs[CORE_BOOT] = (struct image_header_enc *)0xFFFFFFFF,')
 
     DecIndentation()

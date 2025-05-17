@@ -2657,6 +2657,9 @@ def AddFTAB(SIFLI_SDK, chip):
     elif "SF32LB58X" == chip:
         proj_path = os.path.join(SIFLI_SDK, 'example/flash_table/sf32lb58x_common_v2')
         AddChildProj(proj_name, proj_path, False)
+    elif "SF32LB55X" == chip:
+        proj_path = os.path.join(SIFLI_SDK, 'example/flash_table/sf32lb55x_common_v2')
+        AddChildProj(proj_name, proj_path, False)
 
 def AddDFU(SIFLI_SDK):
     proj_path = None
