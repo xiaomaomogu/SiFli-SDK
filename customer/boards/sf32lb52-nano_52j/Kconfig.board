@@ -1,2 +1,2 @@
-source "$SIFLI_SDK/customer/boards/sf32lb52-nano/Kconfig.board"
+source "$SIFLI_SDK/customer/boards/sf32lb52-nano_base/Kconfig.board"
 
