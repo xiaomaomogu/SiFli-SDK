@@ -87,6 +87,14 @@ void gui_pm_init(rt_device_t lcd, gui_pm_event_handler_t handler);
  */
 void gui_pm_fsm(gui_pm_action_t action);
 
+
+/** Set idle mode,False represents POWEROFF,true represents IDLE MODE.
+ *
+ * @param[in] idle_mode idle mode
+ *
+ * @return void
+ */
+void gui_set_idle_mode(bool idle_mode);
 /** Suspend GUI if fsm in INACTIVE_PENDING state and change to INACTIVE
  *
  * Current thread would be suspended and not continue if succeed to suspend
