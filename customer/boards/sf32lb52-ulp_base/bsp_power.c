@@ -26,7 +26,7 @@ __WEAK void BSP_PowerDownCustom(int coreid, bool is_deep_sleep)
 __WEAK void BSP_PowerUpCustom(bool is_deep_sleep)
 {
     // VSYS
-    BSP_GPIO_Set(38, 1, 1); 
+    BSP_GPIO_Set(38, 1, 1);
 
     // VSYS to VCC_3V3
     BSP_GPIO_Set(26, 1, 1);
