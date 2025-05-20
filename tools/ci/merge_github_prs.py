@@ -68,6 +68,24 @@ try:
     git_repo.git.remote('add', 'gitlab', gitlab_url)
     git_repo.git.push('gitlab', f'{GITHUB_BRANCH}:{GITLAB_BRANCH}', force=True)
     print('代码已推送到GitLab')
+    
+    # 触发GitLab CI进行镜像同步
+    try:
+        # 使用GitLab API触发管道，所有环境变量都在GitLab CI设置中配置
+        gl_project = gl.projects.get(GITLAB_REPO)
+        
+        # 只需要传递触发参数，其他变量通过GitLab CI变量设置
+        variables = [
+            {'key': 'MIRROR_EXTERNAL', 'value': 'true'}
+        ]
+        
+        pipeline = gl_project.pipelines.create({
+            'ref': GITLAB_BRANCH,
+            'variables': variables
+        })
+        print(f'已触发GitLab CI进行镜像同步，管道ID: {pipeline.id}')
+    except Exception as e:
+        print(f'触发GitLab CI镜像同步失败: {e}')
 except Exception as e:
     print(f'推送到GitLab失败: {e}')
     sys.exit(1)

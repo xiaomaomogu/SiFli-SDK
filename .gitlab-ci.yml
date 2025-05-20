@@ -17,6 +17,7 @@ stages:
   - prepare
   - build
   - sync_to_github
+  - mirror
 
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
@@ -24,3 +25,4 @@ variables:
 include:
   - local: '.gitlab/ci/build_sdk.yml'
   - local: '.gitlab/ci/sync_to_github.yml'
+  - local: '.gitlab/ci/mirror_to_external.yml'

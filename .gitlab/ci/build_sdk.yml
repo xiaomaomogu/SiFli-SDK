@@ -12,13 +12,11 @@ build-sdk:
       - ci_report_logs
     expire_in: 1 week
   rules:
-    - if: '$SYNC_GITHUB'
-      when: never
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $BUILD_SDK'
       when: always
     - if: '$CI_PIPELINE_SOURCE == "web"'
       when: always
-    - if: '$CI_PIPELINE_SOURCE == "api"'
+    - if: '$CI_PIPELINE_SOURCE == "api" && $BUILD_SDK'
       when: always
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
       when: always
