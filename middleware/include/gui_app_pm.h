@@ -88,9 +88,9 @@ void gui_pm_init(rt_device_t lcd, gui_pm_event_handler_t handler);
 void gui_pm_fsm(gui_pm_action_t action);
 
 
-/** Set idle mode,False represents POWEROFF,true represents IDLE MODE.
+/** Set the screen to enter idle mode
  *
- * @param[in] idle_mode idle mode
+ * @param[in] idle_mode False represents POWEROFF,true represents IDLE MODE.
  *
  * @return void
  */

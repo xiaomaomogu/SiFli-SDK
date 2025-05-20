@@ -139,23 +139,16 @@ void close_display(void)
 
             const uint8_t idle_mode_on = 1;
             rt_device_control(s_gui_ctx.lcd, RTGRAPHIC_CTRL_SET_MODE, (void *)&idle_mode_on);
-
+#ifdef GUI_PM_METRICS_ENABLED
+            s_gui_ctx.stat.lcd_idle_start_time = HAL_GTIMER_READ();
+#endif /* GUI_PM_METRICS_ENABLED */
         }
         else
         {
-
             rt_device_control(s_gui_ctx.lcd, RTGRAPHIC_CTRL_POWEROFF, NULL);
         }
 
-        if (s_gui_ctx.touch)
-        {
-
-            rt_device_control(s_gui_ctx.touch, RTGRAPHIC_CTRL_POWEROFF, NULL);
-        }
-        else
-        {
-            rt_kprintf("power off touch device not found\n");
-        }
+        if (s_gui_ctx.touch) rt_device_control(s_gui_ctx.touch, RTGRAPHIC_CTRL_POWEROFF, NULL);
 
         //if(s_gui_ctx.touch)  rt_device_close(s_gui_ctx.touch);
         //if(s_gui_ctx.wheel)  rt_device_close(s_gui_ctx.wheel);
@@ -184,6 +177,9 @@ void open_display(void)
 
             const uint8_t idle_mode_on = 0;
             rt_device_control(s_gui_ctx.lcd, RTGRAPHIC_CTRL_SET_MODE, (void *)&idle_mode_on);
+#ifdef GUI_PM_METRICS_ENABLED
+            s_gui_ctx.stat.lcd_idle_time += (float)(HAL_GTIMER_READ() - s_gui_ctx.stat.lcd_idle_start_time) / HAL_LPTIM_GetFreq();
+#endif /* GUI_PM_METRICS_ENABLED */
         }
         else
         {
@@ -191,18 +187,10 @@ void open_display(void)
             rt_device_control(s_gui_ctx.lcd, RTGRAPHIC_CTRL_POWERON, NULL);
         }
 
-        if (s_gui_ctx.touch)
-        {
+        if (s_gui_ctx.touch) rt_device_control(s_gui_ctx.touch, RTGRAPHIC_CTRL_POWERON, NULL);
 
-            rt_device_control(s_gui_ctx.touch, RTGRAPHIC_CTRL_POWERON, NULL);
-        }
-        else
-        {
-            rt_kprintf("power on touch device not found\n");
-        }
         //if(s_gui_ctx.touch)  rt_device_open(s_gui_ctx.touch, RT_DEVICE_FLAG_RDONLY);
         //if(s_gui_ctx.wheel)  rt_device_open(s_gui_ctx.wheel, RT_DEVICE_FLAG_RDONLY);
-
         //touch_resume();
         s_gui_ctx.lcd_opened = true;
 #ifdef GUI_PM_METRICS_ENABLED
