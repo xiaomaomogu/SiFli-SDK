@@ -35,7 +35,7 @@ default_boards: &default_boards
   - ec-lb587_hcpu
   - ec-lb585_hcpu
   - ec-lb583_hcpu
-  - sf32lb52-devkit-lcd_525
+  - sf32lb52-lcd_n16r8
   # - em-lb52d
   - sf32lb56-devkit-lcd_a128r12n1
   - sf32lb56-devkit-lcd_n16r12n1
@@ -51,7 +51,7 @@ bt_boards: &bt_boards
   - ec-lb587_hcpu
   - ec-lb585_hcpu
   - ec-lb583_hcpu
-  - sf32lb52-devkit-lcd_525 
+  - sf32lb52-lcd_n16r8 
   # - em-lb52d
   - sf32lb56-devkit-lcd_a128r12n1
   - sf32lb56-devkit-lcd_n16r12n1
@@ -79,13 +79,13 @@ after_55x_boards: &after_55x_boards
   - ec-lb587_hcpu
   - ec-lb583_hcpu
   - ec-lb585_hcpu
-  - sf32lb52-devkit-lcd_525 
+  - sf32lb52-lcd_n16r8 
   - sf32lb56-devkit-lcd_a128r12n1
   - sf32lb56-devkit-lcd_n16r12n1
   - em-lb587
 
 525_devkit_lcd_boards: &525_devkit_lcd_boards
-  - sf32lb52-devkit-lcd_525 
+  - sf32lb52-lcd_n16r8 
 
 
 common_projects:
@@ -118,7 +118,7 @@ common_projects:
 
   - path: example/bt/HCI_over_uart/project
     boards: 
-      - sf32lb52-devkit-lcd_525_hcpu    
+      - sf32lb52-lcd_n16r8_hcpu    
 
   - path: example/bt/hfp/project
     boards: *bt_boards
@@ -155,7 +155,7 @@ common_projects:
       - ec-lb587_hcpu
       - ec-lb585_hcpu
       - ec-lb583_hcpu
-      - sf32lb52-devkit-lcd_525 
+      - sf32lb52-lcd_n16r8 
       - sf32lb56-devkit-lcd_a128r12n1
       - sf32lb56-devkit-lcd_n16r12n1
       - em-lb587
@@ -174,7 +174,7 @@ common_projects:
       - ec-lb587_hcpu
       - ec-lb585_hcpu
       - ec-lb583_hcpu
-      - sf32lb52-devkit-lcd_525 
+      - sf32lb52-lcd_n16r8 
       - sf32lb56-devkit-lcd_a128r12n1
       - sf32lb56-devkit-lcd_n16r12n1
       - em-lb587
@@ -189,7 +189,7 @@ common_projects:
       - eh-lb523_hcpu
       - ec-lb587_hcpu
       - ec-lb583_hcpu
-      - sf32lb52-devkit-lcd_525 
+      - sf32lb52-lcd_n16r8 
       - sf32lb56-devkit-lcd_a128r12n1
       - sf32lb56-devkit-lcd_n16r12n1
       - em-lb587
@@ -207,7 +207,7 @@ common_projects:
       - ec-lb587_hcpu
       - ec-lb585_hcpu
       - ec-lb583_hcpu
-      - sf32lb52-devkit-lcd_525 
+      - sf32lb52-lcd_n16r8 
       - sf32lb56-devkit-lcd_a128r12n1
       - sf32lb56-devkit-lcd_n16r12n1
       - em-lb587
@@ -225,7 +225,7 @@ common_projects:
       - ec-lb587_hcpu
       - ec-lb585_hcpu
       - ec-lb583_hcpu
-      - sf32lb52-devkit-lcd_525 
+      - sf32lb52-lcd_n16r8 
       - sf32lb56-devkit-lcd_a128r12n1
       - sf32lb56-devkit-lcd_n16r12n1
       - em-lb587
@@ -290,7 +290,7 @@ common_projects:
       - ec-lb587_hcpu
       - ec-lb585_hcpu
       - ec-lb583_hcpu
-      - sf32lb52-devkit-lcd_525 
+      - sf32lb52-lcd_n16r8 
       - sf32lb56-devkit-lcd_a128r12n1
       - sf32lb56-devkit-lcd_n16r12n1
       - em-lb587
@@ -359,7 +359,7 @@ common_projects:
     boards:
       - sf32lb56-devkit-lcd_n16r12n1
       - eh-lb551
-      - sf32lb52-devkit-lcd_525
+      - sf32lb52-lcd_n16r8
       - em-lb587
 
   - path: example/rt_device/pwm/pwm/project
@@ -396,4 +396,4 @@ common_projects:
   - path: example/storage/flashdb/project/nor
     boards:
       - eh-lb523
-      - sf32lb52-devkit-lcd_525 
+      - sf32lb52-lcd_n16r8 
