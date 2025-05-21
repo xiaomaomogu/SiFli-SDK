@@ -516,6 +516,34 @@ def download(url: str, destination: str) -> Union[None, Exception]:
         return e
 
 
+def _no_ssl_download(url: str, destination: str) -> Union[None, Exception]:
+    """
+    Download from given url and save into given destination without SSL verification.
+    Use this function when having SSL certificate verification issues.
+    """
+    info(f'Downloading {url} (SSL verification disabled)')
+    info(f'Destination: {destination}')
+    import urllib.request
+    import ssl
+    try:
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        
+        with urllib.request.urlopen(url, context=ssl_context) as response:
+            with open(destination, 'wb') as out_file:
+                block_size = 8192
+                while True:
+                    buffer = response.read(block_size)
+                    if not buffer:
+                        break
+                    out_file.write(buffer)
+        sys.stdout.write('\rDone\n')
+        return None
+    except urllib.error.URLError as e:
+        return e
+
+
 def rename_with_retry(path_from: str, path_to: str) -> None:
     """
     Sometimes renaming a directory on Windows (randomly?) causes a PermissionError.
@@ -2389,7 +2417,7 @@ def get_constraints(sdk_version: str, online: bool = True) -> str:
         pass
 
     for _ in range(DOWNLOAD_RETRY_COUNT):
-        err = download(constraint_url, temp_path)
+        err = _no_ssl_download(constraint_url, temp_path)
         if not os.path.isfile(temp_path):
             warn(f'Download failure: {err}')
             warn(f'Failed to download {constraint_url} to {temp_path}')
