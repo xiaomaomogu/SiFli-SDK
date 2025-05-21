@@ -74,14 +74,14 @@
 0x000036d9 T HAL_NVIC_SetPendingIRQ
 0x00003701 T HAL_NVIC_SetPriority
 0x00003745 T HAL_NVIC_SetPriorityGrouping
-0x00003871 T HAL_PIN_Func2Idx
+0x00003871 T HAL_PIN_Func2Idx_rom
 0x000038a1 T HAL_PIN_Get_Base
-0x000038d1 T HAL_PIN_Set
+0x000038d1 T HAL_PIN_Set_rom
 0x000039ad T HAL_PMU_SetWdt
 0x000039d5 T HAL_PTC_Enable
 0x00003a3d T HAL_PTC_IRQHandler
 0x00003a4f T HAL_PTC_Init
-0x00003a79 T HAL_PostMspInit
+0x00003a79 T HAL_PostMspInit_rom
 0x00003ab5 T HAL_QSPI_Init
 0x00003af1 T HAL_QSPI_READ_ID
 0x00003afb T HAL_QSPI_SET_CLK_INV
@@ -276,7 +276,7 @@
 0x000624a5 T rt_hw_serial_register
 0x00062535 T rt_hw_set_stack_limit
 0x00062539 T rt_hw_stack_init
-0x00062575 T rt_hw_systick_init
+0x00062575 T rt_hw_systick_init_rom
 0x000625c5 T rt_hw_usart_init2
 0x00062665 T rt_hw_watchdog_init
 0x0006269d T rt_hw_watchdog_pet
