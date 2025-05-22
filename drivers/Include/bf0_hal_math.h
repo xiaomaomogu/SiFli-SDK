@@ -53,7 +53,8 @@ extern "C" {
 #endif
 
 #ifndef SF32LB52X
-#if defined(__CC_ARM) || defined(__CLANG_ARM) || (defined(__GNUC__) && (__GNUC__ > 9))
+/* TODO: */
+#if defined(__CC_ARM) || defined(__CLANG_ARM) || (defined(__GNUC__) && (__GNUC__ > 19))
 #define HAL_MATH_CDE_SUPPORT
 #endif /* defined(__CC_ARM) || defined(__CLANG_ARM) || (defined(__GNUC__) && (__GNUC__ > 9)) */
 #endif /* SF32LB52X */
