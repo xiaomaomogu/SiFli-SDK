@@ -39,7 +39,7 @@ default_boards: &default_boards
   # - em-lb52d
   - sf32lb56-lcd_a128r12n1
   - sf32lb56-lcd_n16r12n1
-  - em-lb587
+  - sf32lb58-lcd_n16r64n4
 
 bt_boards: &bt_boards
   - ec-lb567_hcpu
@@ -55,7 +55,7 @@ bt_boards: &bt_boards
   # - em-lb52d
   - sf32lb56-lcd_a128r12n1
   - sf32lb56-lcd_n16r12n1
-  - em-lb587
+  - sf32lb58-lcd_n16r64n4
 
 multicore_boards: &multicore_boards
   - ec-lb567_hcpu
@@ -68,7 +68,7 @@ multicore_boards: &multicore_boards
   - ec-lb583_hcpu
   - sf32lb56-lcd_a128r12n1
   - sf32lb56-lcd_n16r12n1
-  - em-lb587
+  - sf32lb58-lcd_n16r64n4
 
 after_55x_boards: &after_55x_boards
   - ec-lb567_hcpu
@@ -82,7 +82,7 @@ after_55x_boards: &after_55x_boards
   - sf32lb52-lcd_n16r8 
   - sf32lb56-lcd_a128r12n1
   - sf32lb56-lcd_n16r12n1
-  - em-lb587
+  - sf32lb58-lcd_n16r64n4
 
 525_devkit_lcd_boards: &525_devkit_lcd_boards
   - sf32lb52-lcd_n16r8 
@@ -158,7 +158,7 @@ common_projects:
       - sf32lb52-lcd_n16r8 
       - sf32lb56-lcd_a128r12n1
       - sf32lb56-lcd_n16r12n1
-      - em-lb587
+      - sf32lb58-lcd_n16r64n4
       - pc
 
   - path: example/multimedia/lvgl/lvgl_v8_examples/project
@@ -177,7 +177,7 @@ common_projects:
       - sf32lb52-lcd_n16r8 
       - sf32lb56-lcd_a128r12n1
       - sf32lb56-lcd_n16r12n1
-      - em-lb587
+      - sf32lb58-lcd_n16r64n4
       - pc
 
   - path: example/multimedia/lvgl/lvgl_v8_media/project
@@ -192,7 +192,7 @@ common_projects:
       - sf32lb52-lcd_n16r8 
       - sf32lb56-lcd_a128r12n1
       - sf32lb56-lcd_n16r12n1
-      - em-lb587
+      - sf32lb58-lcd_n16r64n4
       - pc
 
   - path: example/multimedia/lvgl/lvgl_v9_demos/project
@@ -210,7 +210,7 @@ common_projects:
       - sf32lb52-lcd_n16r8 
       - sf32lb56-lcd_a128r12n1
       - sf32lb56-lcd_n16r12n1
-      - em-lb587
+      - sf32lb58-lcd_n16r64n4
       - pc
 
   - path: example/multimedia/lvgl/lvgl_v9_examples/project
@@ -228,7 +228,7 @@ common_projects:
       - sf32lb52-lcd_n16r8 
       - sf32lb56-lcd_a128r12n1
       - sf32lb56-lcd_n16r12n1
-      - em-lb587
+      - sf32lb58-lcd_n16r64n4
       - pc
 
   - path: example/multimedia/audio/local_music/project
@@ -293,7 +293,7 @@ common_projects:
       - sf32lb52-lcd_n16r8 
       - sf32lb56-lcd_a128r12n1
       - sf32lb56-lcd_n16r12n1
-      - em-lb587
+      - sf32lb58-lcd_n16r64n4
 
   - path: example/hal/adc/adc_battery/project
     boards: *525_devkit_lcd_boards
@@ -360,7 +360,7 @@ common_projects:
       - sf32lb56-lcd_n16r12n1
       - eh-lb551
       - sf32lb52-lcd_n16r8
-      - em-lb587
+      - sf32lb58-lcd_n16r64n4
 
   - path: example/rt_device/pwm/pwm/project
     boards: *525_devkit_lcd_boards
