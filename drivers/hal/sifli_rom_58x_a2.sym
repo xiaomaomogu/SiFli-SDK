@@ -285,12 +285,12 @@
 0x00062b59 T rt_malloc
 0x00062d69 T rt_memcpy
 0x00062dbf T rt_memset
-0x00062e01 T rt_object_allocate
+0x00062e01 T rt_object_allocate_rom
 0x00062e99 T rt_object_delete
 0x00062f29 T rt_object_detach
-0x00062f81 T rt_object_get_information
+0x00062f81 T rt_object_get_information_rom
 0x00062fa9 T rt_object_get_type
-0x00062fdd T rt_object_init
+0x00062fdd T rt_object_init_rom
 0x00063079 T rt_object_is_systemobject
 0x000631bd T rt_realloc
 0x000632e9 T rt_ringbuffer_data_len
@@ -354,6 +354,7 @@
 0x0006bee8 D HAL_LPAON_WakeupPinMapTbl
 0x204e0194 D ipc_hw_obj
 0x204e0238 D pin_irq_hdr_tab
+0x204e03b8 D rt_object_container_rom
 0x204e126c D rt_interrupt_nest
 0x204e1284 D rt_assert_hook
 0x204e12d4 D rt_current_priority
