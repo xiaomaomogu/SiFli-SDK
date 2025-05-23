@@ -197,6 +197,7 @@ SECTIONS
     *bf0_pin_const.o    (.text* .rodata*)
     *drv_common.o       (.text.rt_hw_us_delay)
     *.o                 (.text.rt_memset)
+    *.o                 (.text.memset)
     
     *.o (.retm_data_*)
 
