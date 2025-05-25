@@ -115,12 +115,14 @@ git clone --recursive https://github.com/OpenSiFli/SiFli-SDK
 
 ::::
 
-```{note}
+````{note}
 上面的SDK路径仅做示例，用户可以根据自己的需要选择路径。
 
 如果在国内访问 GitHub 较慢，可以使用以下命令替换上面的命令：
+```bash
 git clone --recursive https://gitee.com/SiFli/sifli-sdk
 ```
+````
 
 ## 安装工具
 
