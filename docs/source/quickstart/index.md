@@ -5,7 +5,7 @@
 :titlesonly:
 
 get-started
-install/install
+install/index
 build
 arch
 
