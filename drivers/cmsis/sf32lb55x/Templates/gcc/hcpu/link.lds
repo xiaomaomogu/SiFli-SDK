@@ -257,6 +257,9 @@ SECTIONS
     *(.text*)
     *(.rodata*)
 
+    *.o (.SECTION_TTF_HEADER.*)
+    *.o (.SECTION_TTF.*)
+
     KEEP(*(.init))
     KEEP(*(.fini))
 

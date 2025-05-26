@@ -44,7 +44,7 @@ static void wait_refr_task_cb(lv_timer_t *task)
 {
     if (1 == task->repeat_count) //The task will be deleted after this function return.
     {
-        TransResult_T res = (TransResult_T)task->user_data;
+        TransResult_T res = (TransResult_T)(uint32_t)task->user_data;
         trans_anim_log_i("wait_refr_task_cb %d\n", res);
         free_run_done(res);
         free_run_done = NULL;
