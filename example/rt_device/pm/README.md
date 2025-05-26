@@ -11,15 +11,15 @@
 
 ## 例程的使用
 ### 编译和烧录
-#### em-lb566编译方法
+#### sf32lb56-devkit-lcd_n16r12n1编译方法
 56平台默认已配置为Standby Sleep模式休眠<br>
 编译命令<br>
 ```c
-> scons --board=em-lb566 -j8
+> scons --board=sf32lb56-devkit-lcd_n16r12n1 -j8
 ```
 * 切换到例程`project/build_xx`目录，运行`uart_download.bat`，按提示选择端口（boot脚拉高后有打印的串口）即可进行下载：
 ```shell
-> build_em-lb566_hcpu\uart_download.bat
+> build_sf32lb56-devkit-lcd_n16r12n1_hcpu\uart_download.bat
 
      Uart Download
 
@@ -73,7 +73,7 @@ please input the serial port num:5
 * sf32lb58-lcd_n16r64n4板子Jlink连接方法如下图：<br>
 ![alt text](assets/sf32lb58-lcd_n16r64n4-jlink.png)<br>
 ### 硬件连接
-#### em-lb566
+#### sf32lb56-devkit-lcd_n16r12n1
 采用板子上按键PB32为唤醒PIN0`#WKUP_PIN0`，按下按键电平变高唤醒Hcpu
 #### eh-lb551
 板子上按键KEY1`PB48`作为Lcpu的唤醒PIN5`#WKUP_PIN5`，按下按键电平变低进行Lcpu唤醒<br>
@@ -82,7 +82,7 @@ please input the serial port num:5
 #### sf32lb58-lcd_n16r64n4
 采用板子上按键PB54为唤醒PIN0`#WKUP_PIN0`，按下按键电平变高唤醒Hcpu
 ### 例程输出结果
-#### em-lb566
+#### sf32lb56-devkit-lcd_n16r12n1
 * 566 hcpu log，进入standyby待机
 ```
     Serial:c2,Chip:3,Package:1,Rev:2  Reason:00000000
@@ -453,7 +453,7 @@ msh >
     [pm]S:4,308566
 ```
 ### 休眠流程
-#### em-lb566
+#### sf32lb56-devkit-lcd_n16r12n1
 * hcpu休眠唤醒<br>
 在 hcpu 进入 idle 线程，并判断是否符合休眠条件，会按下面流程进行休眠和唤醒<br>
 rt_thread_idle_entry->rt_system_power_manager->_pm_enter_sleep->'pm->ops->sleep(pm, mode);->sifli_sleep -> log 打印[pm]S:4,11620140 -> RT_DEVICE_CTRL_SUSPEND 设备挂起 -> 
