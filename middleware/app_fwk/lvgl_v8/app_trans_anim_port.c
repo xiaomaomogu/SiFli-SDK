@@ -180,6 +180,14 @@ gui_anim_obj_t app_trans_animation_obj_create(const screen_t scr, bool is_cur_sc
             //app_trans_dump_buf_act((char *)screen_snapshot->data);
 #ifdef DISABLE_LVGL_V9
             res = lv_refr_dump_buf_to_img_now(screen_snapshot);
+            if (LV_RES_OK != res)
+            {
+                lv_snapshot_take_to_buf((lv_obj_t *)scr,
+                                        screen_snapshot->header.cf,
+                                        screen_snapshot,
+                                        (uint8_t *)screen_snapshot->data,
+                                        screen_snapshot->data_size);
+            }
 #endif
 #elif !defined(LV_FRAME_BUF_SCHEME_2)
             //directly use frame buffer.
