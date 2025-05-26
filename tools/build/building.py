@@ -170,6 +170,7 @@ def ImgFileBuilder(target, source, env):
     SIFLI_SDK = os.getenv('SIFLI_SDK')
     EZIP_PATH = os.path.join(SIFLI_SDK, f"tools/png2ezip/ezip{env['tool_suffix']}")
     filename = os.path.basename("{}".format(target[0]))
+    tgt_directory = os.path.dirname("{}".format(target[0]))
     logging.info('ImgFileBuilder= '+env['FLAGS'])
     # if ".gif" in str(source[0]):
     if 0: # Merge cases (.gif and .png)
@@ -181,8 +182,7 @@ def ImgFileBuilder(target, source, env):
         logging.info(source_path)
         shutil.move(os.path.join(source_path, target_filename), '{}'.format(target[0]))
     else:
-        subprocess.run(EZIP_PATH + ' -convert ' + str(source[0]) + ' ' + env['FLAGS'] + ' -outdir img_tmp', shell=True, check=True)
-        shutil.move('img_tmp/{}'.format(filename), '{}'.format(target[0]))
+        subprocess.run(EZIP_PATH + ' -convert ' + str(source[0]) + ' ' + env['FLAGS'] + ' -outdir {}'.format(tgt_directory), shell=True, check=True)
 
 def FontFileBuild(target, source, env):
     SIFLI_SDK = os.getenv('SIFLI_SDK')
