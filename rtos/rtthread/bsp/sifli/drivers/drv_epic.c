@@ -313,9 +313,7 @@ static EPIC_HandleTypeDef *epic = NULL;
 
 #ifndef __DEBUG__
     static void gpu_reset(void);
-    #ifndef DRV_EPIC_NEW_API
-        static void epic_abort_callback(EPIC_HandleTypeDef *epic);
-    #endif /*!DRV_EPIC_NEW_API*/
+    static void epic_abort_callback(EPIC_HandleTypeDef *epic);
 #endif
 
 L1_RET_BSS_SECT_BEGIN(drv_epic_ram)
@@ -801,9 +799,7 @@ static rt_err_t wait_gpu_done(rt_int32_t time)
             LOG_E("wait_gpu_done timeout(-2)? err=%d", err);
 #ifndef __DEBUG__
             gpu_reset();
-#ifndef DRV_EPIC_NEW_API
             epic_abort_callback(&epic_handle);
-#endif /*!DRV_EPIC_NEW_API*/
 #else
             RT_ASSERT(0); //Raise an assertion in debug mode.
 #endif /* __RELEASE__ */
@@ -2335,6 +2331,12 @@ static rt_err_t rl_sem_release(void)
 
 
 static void epic_cplt_callback(EPIC_HandleTypeDef *epic)
+{
+    epic_cbk_ctx_t *p_ctx = (epic_cbk_ctx_t *) epic->user_data;
+    epic_sem_release();
+}
+
+static void epic_abort_callback(EPIC_HandleTypeDef *epic)
 {
     epic_cbk_ctx_t *p_ctx = (epic_cbk_ctx_t *) epic->user_data;
     epic_sem_release();
