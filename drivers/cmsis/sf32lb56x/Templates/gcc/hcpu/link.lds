@@ -76,6 +76,9 @@ MEMORY
     RAM (rw) : ORIGIN = __RAM_BASE, LENGTH = __RAM_SIZE
     ROM_EX(rw):ORIGIN = __ROM_EX_BASE, LENGTH = __ROM_EX_SIZE
     PSRAM(rw): ORIGIN = __PSRAM_BASE, LENGTH = __PSRAM_SIZE
+#ifdef PSRAM_DATA2_START_ADDR
+    PSRAM2(rw): ORIGIN = PSRAM_DATA2_START_ADDR, LENGTH = PSRAM_DATA2_SIZE
+#endif
     ROM2 (rx): ORIGIN = __ROM2_BASE, LENGTH = __ROM2_SIZE
     ROM3 (rx): ORIGIN = __ROM3_BASE, LENGTH = __ROM3_SIZE
 }
@@ -446,6 +449,22 @@ SECTIONS
   __etext2 = ALIGN (4);
 
 #ifdef BSP_USING_PSRAM
+
+#ifdef PSRAM_DATA2_START_ADDR
+  /*
+  * PSRAM2 is for l2 frame buffer only.
+  */
+  .RW_PSRAM2 :
+  {
+    . = ALIGN(4);
+    __rw_psram2_start__ = .;
+    *(.*l2_non_ret_bss_frambuf*)
+    . = ALIGN(4);
+    __rw_psram2_end__ = .;
+
+  } > PSRAM2
+#endif
+
   .RW_PSRAM1 :
   {
     . = ALIGN(4);
