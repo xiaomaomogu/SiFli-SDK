@@ -31,7 +31,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           submodules: 'recursive'
 
       - name: Set up Python
@@ -102,11 +101,8 @@ jobs:
     needs: [build-docs]
     runs-on: ubuntu-latest
     steps:
-      - name: Download docs source
-        uses: actions/download-artifact@v4
-        with:
-          name: docs-source
-          path: docs/
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Install upload tools
         run: |
