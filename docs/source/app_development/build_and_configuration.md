@@ -5,7 +5,7 @@
 ```shell
 scons --board=<board_name> -jN
 ```
-其中，`<board_name>`是板子名称，选择方法参见[](/supported_boards.md)，`-jN`为多线程编译参数，N为线程数，比如下面的命令使用8个线程编译板子sf32lb52-lcd_n16r8的目标文件
+其中，`<board_name>`是板子名称，选择方法参见[](../supported_boards/index.md)，`-jN`为多线程编译参数，N为线程数，比如下面的命令使用8个线程编译板子sf32lb52-lcd_n16r8的目标文件
 ```shell
 scons --board=sf32lb52-lcd_n16r8 -j8
 ```
