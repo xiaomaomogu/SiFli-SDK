@@ -15,7 +15,7 @@ project = 'SiFli SDK编程指南'
 copyright = '2019 - {} 思澈科技（上海）有限公司'.format(current_year)
 author = 'SiFli'
 language = 'zh_CN'
-version = 'latest'
+version = os.environ.get('SIFLI_DOC_VERSION', 'latest')
 
 if "SF32LB55X" in tags:
     chip = 'sf32lb55x'
