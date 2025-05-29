@@ -1421,6 +1421,8 @@ AUDIO_API void micbias_power_on()
         RT_ASSERT(my->audcodec_dev);
         err = rt_device_open(my->audcodec_dev, RT_DEVICE_FLAG_WRONLY);
         RT_ASSERT(RT_EOK == err);
+    }
+    {
         rt_device_set_rx_indicate(my->audprc_dev, micbias_rx_ind);
         //config ADC
         struct rt_audio_caps caps;
@@ -1772,6 +1774,12 @@ static int audio_device_speaker_close(void *user_data)
             stream = AUDIO_STREAM_RECORD;
             rt_device_control(my->i2s, AUDIO_CTL_STOP, &stream);
         }
+
+        if (my->audcodec_dev)
+            rt_device_control(my->audcodec_dev, AUDIO_CTL_STOP, &stream_audcodec);
+        if (my->audprc_dev)
+            rt_device_control(my->audprc_dev, AUDIO_CTL_STOP, &stream_audprc);
+
         if (my->pdm)
         {
             rt_device_close(my->pdm);
@@ -1780,11 +1788,6 @@ static int audio_device_speaker_close(void *user_data)
             micbias_power_off();
 #endif
         }
-
-        if (my->audcodec_dev)
-            rt_device_control(my->audcodec_dev, AUDIO_CTL_STOP, &stream_audcodec);
-        if (my->audprc_dev)
-            rt_device_control(my->audprc_dev, AUDIO_CTL_STOP, &stream_audprc);
     }
 
     if (!my->tx_ref && !my->rx_ref)
