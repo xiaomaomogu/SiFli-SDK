@@ -102,6 +102,7 @@
 #define REG_CONTINUE_WRITE_RAM 0x3C
 #define REG_WBRIGHT            0x51 /* Write brightness*/
 #define REG_RBRIGHT            0x53 /* Read brightness*/
+#define REG_WRHBMDISBV         0x63
 #define REG_PORCH_CTRL         0xB2
 #define REG_FRAME_CTRL         0xB3
 #define REG_GATE_CTRL          0xB7
@@ -115,6 +116,9 @@
 #define REG_PV_GAMMA_CTRL      0xE0
 #define REG_NV_GAMMA_CTRL      0xE1
 #define REG_SPI2EN             0xE7
+#define REG_PASSWD1            0xF4
+#define REG_PASSWD2            0xF5
+#define REG_CMD_PAGE_SWITCH    0xFE
 
 #define DEBUG_PRINTF(...)   LOG_I(__VA_ARGS__)
 
@@ -228,50 +232,50 @@ static void LCD_Drv_Init(LCDC_HandleTypeDef *hlcdc)
 #else
     parameter[0] = 0x20;
 #endif
-    LCD_WriteReg(hlcdc, 0xFE, parameter, 1); //Pass word unlock
+    LCD_WriteReg(hlcdc, REG_CMD_PAGE_SWITCH, parameter, 1); //Pass word unlock
     parameter[0] = 0x5A;
-    LCD_WriteReg(hlcdc, 0xF4, parameter, 1);
+    LCD_WriteReg(hlcdc, REG_PASSWD1, parameter, 1);
     parameter[0] = 0x59;
-    LCD_WriteReg(hlcdc, 0xF5, parameter, 1);
+    LCD_WriteReg(hlcdc, REG_PASSWD2, parameter, 1);
 
     parameter[0] = 0x20;
-    LCD_WriteReg(hlcdc, 0xFE, parameter, 1); //Pass word lock
+    LCD_WriteReg(hlcdc, REG_CMD_PAGE_SWITCH, parameter, 1); //Pass word lock
     parameter[0] = 0xA5;
-    LCD_WriteReg(hlcdc, 0xF4, parameter, 1);
+    LCD_WriteReg(hlcdc, REG_PASSWD1, parameter, 1);
     parameter[0] = 0xA5;
-    LCD_WriteReg(hlcdc, 0xF5, parameter, 1);
+    LCD_WriteReg(hlcdc, REG_PASSWD2, parameter, 1);
 
     parameter[0] = 0x00;
-    LCD_WriteReg(hlcdc, 0xFE, parameter, 1);
+    LCD_WriteReg(hlcdc, REG_CMD_PAGE_SWITCH, parameter, 1);
     parameter[0] = 0x80;
-    LCD_WriteReg(hlcdc, 0xC4, parameter, 1);
+    LCD_WriteReg(hlcdc, REG_SET_DISP_MODE, parameter, 1);
     parameter[0] = 0x55;
-    LCD_WriteReg(hlcdc, 0x3A, parameter, 1);
+    LCD_WriteReg(hlcdc, REG_COLOR_MODE, parameter, 1);
     parameter[0] = 0x00;
-    LCD_WriteReg(hlcdc, 0x35, parameter, 1);
+    LCD_WriteReg(hlcdc, REG_TEARING_EFFECT, parameter, 1);
     parameter[0] = 0x20;
-    LCD_WriteReg(hlcdc, 0x53, parameter, 1);
+    LCD_WriteReg(hlcdc, REG_RBRIGHT, parameter, 1);
     //parameter[0] = 0x10;
-    //ICNA3310_WriteReg(hlcdc, 0x51, parameter, 1);
+    //ICNA3310_WriteReg(hlcdc, REG_WBRIGHT, parameter, 1);
 
     parameter[0] = 0xff;
-    LCD_WriteReg(hlcdc, 0x63, parameter, 1);
+    LCD_WriteReg(hlcdc, REG_WRHBMDISBV, parameter, 1);
 
     parameter[0] = (COL_OFFSET >> 8) & 0xFF;
     parameter[1] = COL_OFFSET & 0xFF;
     parameter[2] = ((LCD_PIXEL_WIDTH + COL_OFFSET - 1) >> 8) & 0xFF;
     parameter[3] = (LCD_PIXEL_WIDTH + COL_OFFSET - 1) & 0xFF;
-    LCD_WriteReg(hlcdc, 0x2A, parameter, 4);
+    LCD_WriteReg(hlcdc, REG_CASET, parameter, 4);
     parameter[0] = (ROW_OFFSET >> 8) & 0xFF;
     parameter[1] = ROW_OFFSET & 0xFF;
     parameter[2] = ((LCD_PIXEL_HEIGHT + ROW_OFFSET - 1) >> 8) & 0xFF;
     parameter[3] = (LCD_PIXEL_HEIGHT + ROW_OFFSET - 1) & 0xFF;
-    LCD_WriteReg(hlcdc, 0x2B, parameter, 4);
+    LCD_WriteReg(hlcdc, REG_RASET, parameter, 4);
 
-    LCD_WriteReg(hlcdc, 0x11, (uint8_t *)NULL, 0);
+    LCD_WriteReg(hlcdc, REG_SLEEP_OUT, (uint8_t *)NULL, 0);
     //sleep out+display on
     rt_thread_delay(120);
-    LCD_WriteReg(hlcdc, 0x29, (uint8_t *)NULL, 0);
+    LCD_WriteReg(hlcdc, REG_DISPLAY_ON, (uint8_t *)NULL, 0);
     rt_thread_delay(70);
 }
 
