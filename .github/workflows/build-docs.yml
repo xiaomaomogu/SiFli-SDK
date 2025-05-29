@@ -53,6 +53,8 @@ jobs:
 
       - name: Build documentation for ${{ matrix.variant }}
         working-directory: ./docs
+        env:
+          SIFLI_DOC_VERSION: ${{ steps.determine-version.outputs.VERSION }}
         run: python generate_docs.py ${{ matrix.variant }}
 
       - name: Configure COSCMD
