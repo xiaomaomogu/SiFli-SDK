@@ -401,7 +401,10 @@ common_projects:
   - path: example/rt_driver/project
     boards: *default_boards
 
-  - path: example/storage/file_system/project
+  - path: example/storage/fatfs/nand/project
+    boards: *default_boards
+
+  - path: example/storage/fatfs/nor/project
     boards: *default_boards
 
   - path: example/storage/flashdb/project/nand
