@@ -5,8 +5,6 @@ mirror_to_external:
   tags:
     - docker
   variables:
-    GIT_STRATEGY: clone
-    GIT_DEPTH: 0
     GIT_SUBMODULE_STRATEGY: recursive
   before_script:
     - apt-get update && apt-get install -y git openssh-client
@@ -23,9 +21,7 @@ mirror_to_external:
   script:
     - echo "正在推送到外部仓库..."
     - git fetch --tags --force
-    - |
-      echo "推送当前分支 $CI_COMMIT_REF_NAME 到外部仓库..."
-      git push mirror $CI_COMMIT_REF_NAME:$TARGET_BRANCH_NAME
+    - git push mirror $CI_COMMIT_REF_NAME:refs/heads/$CI_COMMIT_REF_NAME --force
 
     - echo "推送完成"
   rules:
