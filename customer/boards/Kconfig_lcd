@@ -374,6 +374,12 @@ if BSP_USING_LCD
             select LCD_USING_OPM060E9_V10
             select BSP_LCDC_USING_EPD_8BIT
 
+        config LCD_USING_GC9107_128x128_SPI
+            bool "0.85 rect SPI LCD(128X128 GC9107)"
+            select LCD_USING_GC9107
+            select BSP_LCDC_USING_SPI_DCX_1DATA
+            select LCD_USING_PWM_AS_BACKLIGHT
+
 
         
 #       config AM196Q410502LK_196_410x502
@@ -523,6 +529,7 @@ if BSP_USING_LCD
         default 240 if AM201Q240296LK_201_240x296
         default 460 if AM200Q460460LK_200_460x460
         default 410 if H0198S005AMT005_V0_195_410x502
+        default 128 if LCD_USING_GC9107_128x128_SPI
 
 
         
@@ -574,6 +581,7 @@ if BSP_USING_LCD
         default 296 if AM201Q240296LK_201_240x296
         default 460 if AM200Q460460LK_200_460x460
         default 502 if H0198S005AMT005_V0_195_410x502
+        default 128 if LCD_USING_GC9107_128x128_SPI
 
 
     config LCD_DPI
@@ -624,6 +632,7 @@ if BSP_USING_LCD
         default 300 if AM201Q240296LK_201_240x296
         default 300 if AM200Q460460LK_200_460x460
         default 300 if H0198S005AMT005_V0_195_410x502
+        default 213 if LCD_USING_GC9107_128x128_SPI
 
         
 
