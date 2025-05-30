@@ -64,7 +64,6 @@ mkdir -p C:\OpenSiFli
 cd C:\OpenSiFli
 git clone --recursive https://github.com/OpenSiFli/SiFli-SDK
 ```
-
 ````{note}
 上面的SDK路径仅做示例，用户可以根据自己的需要选择路径。
 
@@ -80,7 +79,6 @@ git clone --recursive https://gitee.com/SiFli/sifli-sdk
 ```bash
 git submodule update --init --recursive
 ```
-
 ````
 
 ## 安装工具
@@ -120,14 +118,23 @@ $env:PIP_INDEX_URL="https://mirrors.ustc.edu.cn/pypi/simple"
 如果需要经常运行 SiFli-SDK，并且希望在每次打开终端时自动设置环境变量，可以新建一个 Windows Terminal 配置文件，具体步骤如下：
 
 在 Windows Terminal 中按下 `Ctrl+,` 打开设置，点击添加新的配置文件，选择复制配置文件 `Windows PowerShell`，然后按照以下步骤进行操作：
-
+![](image/Windows-T1.png)
 1. 将名称改为SiFli-SDK
 2. 把命令行的配置改为如下,最后的export.ps1文件位置改成你的SDK路径
 ```powershell
 %SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe  -ExecutionPolicy Bypass -NoExit -File  D:\SIFIL\SiFli-SDK\export.ps1
 ```
+![](image/Windows-T2.png)
+
 3. 启动目录改为使用父进程目录
+
+![](image/Windows-T3.png)
+
 4. 其他配置可以不改动
 5. 点击保存
 
 后续只需要在任意代码目录下打开Windows Terminal，点击右上角的下拉菜单，选择SiFli-SDK，就可以自动设置环境变量了。在新打开的窗口中就可以使用SDK的编译和下载命令了。
+![](image/Windows-T4.png)
+
+### 环境搭建是否成功
+可以进行编译下载看看是否成功，编译下载可以参见[](../../build.md)
