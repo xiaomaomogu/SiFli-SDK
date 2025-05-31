@@ -1,4 +1,4 @@
-[bug|new|opt][module_name] one line description
+[bug|new|opt|chore][module_name] one line description
 
 redmine: #id, REDMINE-id
 
