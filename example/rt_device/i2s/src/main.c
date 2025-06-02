@@ -42,7 +42,7 @@ rt_thread_t g_rx_tx_tid;
 static uint8_t g_pipe_data[AUDIO_BUF_SIZE];
 /* Buffer of rx data, used to save rx pcm data. */
 L2_RET_BSS_SECT_BEGIN(g_audrx_buf)
-ALIGN(4) uint8_t g_audrx_buf[AUDRX_BUF_MAX] = {0};
+ALIGN(4) uint8_t g_audrx_buf[AUDRX_BUF_MAX] L2_RET_BSS_SECT(g_audrx_buf);
 L2_RET_BSS_SECT_END
 /* Buffer offset */
 uint32_t g_audrx_offset = 0;
