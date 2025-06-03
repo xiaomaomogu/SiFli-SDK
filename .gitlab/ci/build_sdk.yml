@@ -4,7 +4,7 @@ build-sdk:
     - build
   script: |
     . ./export.sh
-    python tools/autotest/build_sdk.py -c=build_config_gcc.yaml -p=gcc -j=4
+    python tools/autotest/build_sdk.py -c=build_config_gcc.yaml -p=gcc -j=1
     echo "SDK构建完成"
   artifacts:
     paths:
