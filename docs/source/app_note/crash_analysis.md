@@ -323,8 +323,19 @@ HR(HCPU Registers)按钮用于恢复没有走到异常处理程序的CPU寄存�
 
 ### 4.2 LCPU恢复现场
 
-与HCPU的恢复现场类似，选择LA按钮，按提示操作即可。
-需要注意的是LCPU 多了rom axf的同步加载，可以按需要勾选。
+与HCPU的恢复现场类似，先将需要用到的文件copy到scripy目录中来(lcpu.axf和rom_axf文件)
+![](/assets/add4.png)
+
+需要的文件路径如下图，rom_axf文件按照自己的型号选择对应文件即可，lcpu文件要根据自己是keil编译还是gcc编译来选择
+#### 需要注意：！！！
+-  keil编译出来的lcpu文件后缀名为axf，gcc编译出来的lcpu文件后缀名为elf，注意区分
+-  选择rom_axf文件时注意区分板子型号
+![](/assets/add2.png)
+![](/assets/add3.png)
+
+再打开Trace32选择LA按钮，在弹出的窗口中进行如下配置：
+![](/assets/add1.png)
+
 
 
 ## 5. Trace32常用命令
