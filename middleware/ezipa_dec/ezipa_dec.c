@@ -52,6 +52,7 @@
 #include <string.h>
 #include "board.h"
 #include "drv_epic.h"
+#include "drv_flash.h"
 #include "ezipa_dec.h"
 #include "log.h"
 #ifdef RT_USING_DFS
@@ -307,14 +308,14 @@ static int32_t ezipa_draw_disp_op_none(ezipa_obj_t *obj, ezipa_canvas_t *canvas)
     RT_ASSERT(epic);
     epic->XferCpltCallback = epic_cplt_callback;
     epic->user_data = (void *)obj;
-
+    rt_flash_lock((uint32_t)obj->ezipa_data);
     status = HAL_EPIC_BlendStartEx_IT(epic, input_layer, input_layer_num, &output_layer);
     RT_ASSERT(HAL_OK == status);
 
     /* wait for complete */
     err = rt_sem_take(&obj->sem, EPIC_TIMEOUT_MS);
     RT_ASSERT(RT_EOK == err);
-
+    rt_flash_unlock((uint32_t)obj->ezipa_data);
     /* update canvas buf */
     epic->XferCpltCallback = epic_cplt_callback;
     epic->user_data = (void *)obj;
@@ -798,7 +799,7 @@ static int32_t ezipa_render_output_buf(ezipa_obj_t *obj)
     RT_ASSERT(epic);
     epic->XferCpltCallback = epic_cplt_callback;
     epic->user_data = (void *)obj;
-
+    rt_flash_lock((uint32_t)obj->ezipa_data);
     if (EZIP_EZIPA_BLEND_OP_SOURCE == obj->curr_frame.blend_op)
     {
         status = HAL_EPIC_Copy_IT(epic, &fg, &dst);
@@ -812,7 +813,7 @@ static int32_t ezipa_render_output_buf(ezipa_obj_t *obj)
     /* wait for complete */
     err = rt_sem_take(&obj->sem, EPIC_TIMEOUT_MS);
     RT_ASSERT(RT_EOK == err);
-
+    rt_flash_unlock((uint32_t)obj->ezipa_data);
     return 0;
 }
 
@@ -913,7 +914,7 @@ static int32_t ezipa_render_next_frame(ezipa_obj_t *obj, ezipa_canvas_t *canvas)
     {
         obj->play_idx++;
     }
-
+    rt_flash_lock((uint32_t)obj->ezipa_data);
     status = HAL_EZIP_ResumeEZIPA(obj->ezip_handle, obj->ezipa_data, obj->next_frame.seq_num, obj->play_idx);
     RT_ASSERT(HAL_OK == status);
 
@@ -946,7 +947,7 @@ static int32_t ezipa_render_next_frame(ezipa_obj_t *obj, ezipa_canvas_t *canvas)
         status = HAL_EZIP_SuspendEZIPA(obj->ezip_handle);
         RT_ASSERT(HAL_OK == status);
     }
-
+    rt_flash_unlock((uint32_t)obj->ezipa_data);
     return error;
 }
 
@@ -1099,8 +1100,9 @@ ezipa_obj_t *ezipa_open(const void *data, ezipa_color_fmt_t output_color_fmt)
 
     err = drv_epic_take(EPIC_TIMEOUT_MS);
     RT_ASSERT(RT_EOK == err);
-
+    rt_flash_lock((uint32_t)obj->ezipa_data);
     status = HAL_EZIP_OpenEZIPA(ezip_handle, (uint8_t *)obj->ezipa_data, &obj->header, &obj->next_frame);
+    rt_flash_unlock((uint32_t)obj->ezipa_data);
     if (HAL_OK != status)
     {
         err = drv_epic_release();
