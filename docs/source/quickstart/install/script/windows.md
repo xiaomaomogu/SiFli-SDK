@@ -30,7 +30,14 @@ SiFli-SDK 脚本安装仅支持`powershell`，并推荐使用`PowerShell 7`版�
 对国内用户来说，可以从如下镜像链接直接下载 PowerShell 7 安装包：<https://mirror4.lzu.edu.cn/github-release/PowerShell/PowerShell/v7.4.10%20Release%20of%20PowerShell/PowerShell-7.4.10-win-x64.msi>
 ```
 
-对于终端的选择，我们建议使用 [Windows Terminal](https://aka.ms/terminal) 或者 [Visual Studio Code](https://code.visualstudio.com/) 的集成终端。
+对于终端的选择，我们建议使用 [Windows Terminal](https://aka.ms/terminal) 或者 [Visual Studio Code](https://code.visualstudio.com/) 的集成终端。需要注意的是，在一些较新的 Windows 10/11 版本中，Windows Terminal 已经预装了。
+
+想要打开`PowerShell`，可以使用如下方式：
+
+- 按 Win键 或点击左下角Windows图标，输入 `powershell`，然后点击打开 PowerShell 终端。
+- 按下 Win + R 组合键，打开运行窗口，输入 `powershell`，然后点击确定。
+
+如果您使用的是 Windows Terminal，可以直接在终端中打开 PowerShell。想要打开终端，可以按 Win键 或点击左下角Windows图标，输入 `终端`，然后点击打开 Windows Terminal。
 
 ````{warning}
 需要注意的是，如果您使用的是PowerShell 5，使用 Windows Terminal的时候运行 install 脚本有可能出现错误，提示不支持`PowerShell.exe`。这时候请升级为 PowerShell 7 或者使用 PowerShell 自带终端（打开之后一片蓝底那个）
@@ -47,30 +54,54 @@ $PSVersionTable.PSVersion
 `无法加载文件 C:\OpenSiFli\SiFli-SDK\export.ps1，因为在此系统上禁止运行脚本。` 的错误提示，或者你从未听说且从未运行过`.ps1`脚本，请使用 **管理员模式** 打开 PowerShell 终端，并运行以下命令：
 
 ```powershell
-Set-ExecutionPolicy RemoteSigned -Scope Process
+Set-ExecutionPolicy RemoteSigned
 ```
+
+然后输入`Y`命令后，回车即可获得运行脚本的权限。
 
 ## 获取 SiFli-SDK
 
 在围绕 SF32 构建应用程序之前，请先获取 SiFli 提供的软件库文件 [SiFli-SDK 仓库](https://github.com/OpenSiFli/SiFli-SDK)。
 
-获取 SiFli-SDK 的本地副本：打开终端，切换到要保存 SiFli-SDK 的工作目录，使用 git clone 命令克隆远程仓库
-（由于SiFli-SDK中包含子模块，不能通过下载zip包获取完整的代码）。
+获取 SiFli-SDK 的本地副本：打开终端，切换到要保存 SiFli-SDK 的工作目录，使用 `git clone` 命令克隆远程仓库。一般来说，我们建议使用release分支上的代码以获取最新的稳定版本。
+
+```{warning}
+
+由于SiFli-SDK中包含子模块，不能通过下载zip包获取完整的代码。
+
+```
 
 打开 PowerShell 终端，运行以下命令：
 
 ```powershell
 mkdir -p C:\OpenSiFli
 cd C:\OpenSiFli
-git clone --recursive https://github.com/OpenSiFli/SiFli-SDK
+git clone --recursive -b release/v2.4 https://github.com/OpenSiFli/SiFli-SDK
 ```
+
 ````{note}
 上面的SDK路径仅做示例，用户可以根据自己的需要选择路径。
 
-如果在国内访问 GitHub 较慢，可以使用以下命令替换上面的命令：
+如果在国内访问 GitHub 较慢，可以使用 `gitee` 镜像来克隆 SiFli-SDK。请使用以下命令：
 ```powershell
-git clone --recursive https://gitee.com/SiFli/sifli-sdk
+git clone --recursive -b release/v2.4 https://gitee.com/SiFli/sifli-sdk
 ```
+
+需要注意，gitee的SiFli-SDK仓库的路径是全小写的，在后续出现`SiFli-SDK`时需要注意大小写。
+````
+
+````{note}
+如果想要切换到其他分支（例如开发分支），可以使用 `checkout` 命令，例如：
+
+
+```powershell
+git checkout main
+```
+或者
+```powershell
+git checkout release/v2.3
+```
+
 ````
 
 ````{note}
@@ -106,11 +137,16 @@ $env:PIP_INDEX_URL="https://mirrors.ustc.edu.cn/pypi/simple"
 请在需要使用编译或下载命令的终端窗口运行以下命令：
 
 ```powershell
+cd C:\OpenSiFli\SiFli-SDK
 .\export.ps1
 ```
 
 ```{note}
-目前的脚本可能有一些偶现的bug，如果在编译的时候提示找不到`arm-none-eabi-gcc`等命令，可以尝试运行两次`. export.sh`解决。
+每次使用 SiFli-SDK 前，都需要在SDK根目录下运行一次 `export.ps1` 脚本来设置环境变量。注意，必须要在SDK根目录下运行该脚本，否则会导致运行失败或者编译错误。
+```
+
+```{note}
+目前的脚本可能有一些偶现的bug，如果在编译的时候提示找不到`arm-none-eabi-gcc`等命令，可以尝试运行两次`. export.ps1`解决。
 ```
 
 ### Windows Terminal 快捷配置
