@@ -880,9 +880,98 @@ static pin_function HAL_PIN_SetAtimFunc(int pad, pin_function func)
     return func;
 }
 
+static void HAL_PIN_ResetPBRFunc(int pad)
+{
+    __IO uint32_t *rtc_reg;
+
+    HAL_ASSERT((PAD_PA24 <= pad) && (PAD_PA27 >= pad));
+
+    rtc_reg = &hwp_rtc->PBR0R;
+    rtc_reg += (pad - PAD_PA24);
+
+    /* disable output */
+    MODIFY_REG(*rtc_reg, RTC_PBR0R_OE_Msk, 0);
+}
+
+static pin_function HAL_PIN_SetPBRFunc(int pad, pin_function func)
+{
+    __IO uint32_t *rtc_reg;
+    uint32_t pinout_sel = 0;
+    uint32_t pinout_sel_mask;
+    uint32_t pbr_sel;
+
+    if ((PAD_PA24 > pad) || (PAD_PA27 < pad))
+    {
+        return PIN_FUNC_UNDEF;
+    }
+
+    rtc_reg = &hwp_rtc->PBR0R;
+    rtc_reg += (pad - PAD_PA24);
+    if (PBR_LPTIM1_OUT == func)
+    {
+        pinout_sel = HPSYS_AON_CR1_PINOUT_SEL0_LPTIM1_OUT;
+        pinout_sel_mask = HPSYS_AON_CR1_PINOUT_SEL0_Msk;
+        pbr_sel = RTC_PBR0R_SEL_PINOUT_SEL0;
+    }
+    else if (PBR_LPTIM2_OUT == func)
+    {
+        pinout_sel = HPSYS_AON_CR1_PINOUT_SEL0_LPTIM2_OUT;
+        pinout_sel_mask = HPSYS_AON_CR1_PINOUT_SEL0_Msk;
+        pbr_sel = RTC_PBR0R_SEL_PINOUT_SEL0;
+    }
+    else if (PBR_LPTIM1_INV_OUT == func)
+    {
+        pinout_sel = HPSYS_AON_CR1_PINOUT_SEL1_LPTIM1_INV_OUT;
+        pinout_sel_mask = HPSYS_AON_CR1_PINOUT_SEL1_Msk;
+        pbr_sel = RTC_PBR0R_SEL_PINOUT_SEL1;
+    }
+    else if (PBR_LPTIM2_INV_OUT == func)
+    {
+        pinout_sel = HPSYS_AON_CR1_PINOUT_SEL1_LPTIM2_INV_OUT;
+        pinout_sel_mask = HPSYS_AON_CR1_PINOUT_SEL1_Msk;
+        pbr_sel = RTC_PBR0R_SEL_PINOUT_SEL1;
+    }
+    else if (PBR_GPO == func)
+    {
+        pbr_sel = RTC_PBR0R_SEL_PBR_OUT;
+    }
+    else if (PBR_CLK_RTC == func)
+    {
+        pbr_sel = RTC_PBR0R_SEL_CLK_RTC;
+    }
+    else
+    {
+        pbr_sel = RTC_PBR0R_SEL_PBR_OUT;
+    }
+
+    if (pinout_sel)
+    {
+        MODIFY_REG(hwp_hpsys_aon->CR1, pinout_sel_mask, pinout_sel);
+    }
+
+    /* select function */
+    MODIFY_REG(*rtc_reg, RTC_PBR0R_SEL_Msk, pbr_sel);
+    /* enable output */
+    MODIFY_REG(*rtc_reg, RTC_PBR0R_OE_Msk, RTC_PBR0R_OE_Msk);
+
+    return func;
+}
+
+static void HAL_PIN_ResetHpsysModuleFunc(int pad, pin_function func)
+{
+    if ((PAD_PA24 <= pad) && (PAD_PA27 >= pad))
+    {
+        HAL_PIN_ResetPBRFunc(pad);
+    }
+
+    // TODO: clear other module functions
+}
+
 
 static pin_function HAL_PIN_SetHpsysModuleFunc(int pad, pin_function func)
 {
+    HAL_PIN_ResetHpsysModuleFunc(pad, func);
+
     if ((func >= USART1_RXD) && (func <= USART3_RTS))
     {
         func = HAL_PIN_SetUartFunc(pad, func);
@@ -902,6 +991,10 @@ static pin_function HAL_PIN_SetHpsysModuleFunc(int pad, pin_function func)
     else if ((func >= ATIM1_CH1) && (func <= ATIM1_BKIN2))
     {
         func = HAL_PIN_SetAtimFunc(pad, func);
+    }
+    else if ((func >= PBR_GPO) && (func <= PBR_LPTIM2_INV_OUT))
+    {
+        func = HAL_PIN_SetPBRFunc(pad, func);
     }
 
     return func;
