@@ -14,12 +14,24 @@
 对国内用户来说，可以使用如下国内镜像链接下载Python安装包：<https://mirrors.ustc.edu.cn/python/3.12.0/python-3.12.0.exe>
 ```
 
+安装完成之后，可以在终端中运行`python --version`命令来检查 Python 是否安装成功。正常情况下，应该会输出 Python 的版本信息，例如：
+
+```powershell
+Python 3.12.0
+```
+
 ### Git 环境
 
 如果没有安装 Git，请参考 [Git 官网](https://git-scm.com/download/win) 下载并安装 Git。安装完成后，确保将 Git 添加到系统的环境变量中。
 
 ```{note}
 对于国内用户来说，可以使用如下国内镜像链接下载 Git 安装包：<https://mirrors.huaweicloud.com/git-for-windows/v2.47.0.windows.1/Git-2.47.0-64-bit.exe>。每次均保持默认安装选项即可。
+```
+
+安装完成之后，可以在终端中运行`git --version`命令来检查 Git 是否安装成功。正常情况下，应该会输出 Git 的版本信息，例如：
+
+```powershell
+git version 2.47.0.windows.1
 ```
 
 ### 终端设置
@@ -30,7 +42,7 @@ SiFli-SDK 脚本安装仅支持`powershell`，并推荐使用`PowerShell 7`版�
 对国内用户来说，可以从如下镜像链接直接下载 PowerShell 7 安装包：<https://mirror4.lzu.edu.cn/github-release/PowerShell/PowerShell/v7.4.10%20Release%20of%20PowerShell/PowerShell-7.4.10-win-x64.msi>
 ```
 
-对于终端的选择，我们建议使用 [Windows Terminal](https://aka.ms/terminal) 或者 [Visual Studio Code](https://code.visualstudio.com/) 的集成终端。需要注意的是，在一些较新的 Windows 10/11 版本中，Windows Terminal 已经预装了。
+对于终端的选择，我们建议使用 [Windows Terminal](https://aka.ms/terminal)，用户也可以自行选择其他终端，例如VSCode自带的集成终端。但是更推荐使用 Windows Terminal。需要注意的是，在一些较新的 Windows 10/11 版本中，Windows Terminal 已经预装了。
 
 想要打开`PowerShell`，可以使用如下方式：
 
@@ -121,7 +133,8 @@ cd C:\OpenSiFli\SiFli-SDK
 .\install.ps1
 ```
 
-国内用户可以使用如下命令通过国内镜像源安装工具包：
+````{note}
+国内用户可以改用下面的命令通过国内镜像源安装工具包，避免默认源下载速度慢。注意，选择执行下述命令的时候不需要再执行上述代码块中的命令。
 
 ```powershell
 cd C:\OpenSiFli\SiFli-SDK
@@ -129,6 +142,8 @@ $env:SIFLI_SDK_GITHUB_ASSETS="downloads.sifli.com/github_assets"
 $env:PIP_INDEX_URL="https://mirrors.ustc.edu.cn/pypi/simple"
 .\install.ps1
 ```
+
+````
 
 ## 设置环境变量
 
