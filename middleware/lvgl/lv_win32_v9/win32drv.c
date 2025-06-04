@@ -671,9 +671,9 @@ static HDC lv_windows_create_frame_buffer(
                                   0);
             if (hBitmap)
             {
-                *PixelBufferSize = Width * Height;
-                *PixelBufferSize *= lv_color_format_get_size(
-                                        LV_COLOR_FORMAT_NATIVE);
+                SIZE_T  aligned_line_bytes = (Width * lv_color_format_get_size(LV_COLOR_FORMAT_NATIVE) + 3) & ~3;  // Windows GDI requires every line buffer to be 4-bytes aligned.
+
+                *PixelBufferSize = aligned_line_bytes * Height;
 
                 DeleteObject(SelectObject(hFrameBufferDC, hBitmap));
                 DeleteObject(hBitmap);
