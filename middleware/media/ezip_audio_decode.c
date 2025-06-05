@@ -34,7 +34,7 @@ void ezip_audio_cache_init(ffmpeg_handle thiz)
     cache->main_ptr = &cache->main_buf[0];
     cache->main_left = 0;
 
-    for (int i = 0; i < AUDIO_PACKEET_MEMORY_POOL; i++)
+    for (int i = 0; i < AUDIO_PACKETS_MEMORY_POOL; i++)
     {
         rt_slist_append(&cache->empty_audio_slist, &cache->cache[i].snode);
     }
@@ -42,7 +42,7 @@ void ezip_audio_cache_init(ffmpeg_handle thiz)
 void ezip_audio_cache_deinit(ffmpeg_handle thiz)
 {
     ezip_audio_cache_t *cache = &thiz->ezip_audio_cache;
-    for (int i = 0; i < AUDIO_PACKEET_MEMORY_POOL; i++)
+    for (int i = 0; i < AUDIO_PACKETS_MEMORY_POOL; i++)
     {
         if (cache->cache[i].buf)
         {
@@ -75,7 +75,7 @@ ezip_audio_packet_t *ezip_audio_read_packet(ffmpeg_handle thiz, uint32_t size, u
     rt_slist_t *empty;
 
 #if 0
-    for (int i = 0; i < AUDIO_PACKEET_MEMORY_POOL; i++)
+    for (int i = 0; i < AUDIO_PACKETS_MEMORY_POOL; i++)
     {
         LOG_I("audio read in cache %d=buf=%p, s=%d len=%d",
               i,
@@ -84,15 +84,23 @@ ezip_audio_packet_t *ezip_audio_read_packet(ffmpeg_handle thiz, uint32_t size, u
               thiz->ezip_audio_cache.cache[i].data_len);
     }
 #endif
-    rt_enter_critical();
-    empty = rt_slist_first(&thiz->ezip_audio_cache.empty_audio_slist);
-    if (empty)
+    while (1)
     {
-        rt_slist_remove(&thiz->ezip_audio_cache.empty_audio_slist, empty);
+        rt_enter_critical();
+        empty = rt_slist_first(&thiz->ezip_audio_cache.empty_audio_slist);
+        if (empty)
+        {
+            rt_slist_remove(&thiz->ezip_audio_cache.empty_audio_slist, empty);
+        }
+        rt_exit_critical();
+        if (empty)
+        {
+            break;
+        }
+        rt_thread_mdelay(5);
     }
-    rt_exit_critical();
 
-    RT_ASSERT(empty);
+
 
     p = rt_container_of(empty, ezip_audio_packet_t, snode);
     //LOG_I("empty size=%d size=%d paddings=%d", p->buf_size, size, paddings);
@@ -122,7 +130,7 @@ ezip_audio_packet_t *ezip_audio_read_packet(ffmpeg_handle thiz, uint32_t size, u
     rt_slist_append(&thiz->ezip_audio_cache.readed_audio_slist, empty);
     rt_exit_critical();
 #if 0
-    for (int i = 0; i < AUDIO_PACKEET_MEMORY_POOL; i++)
+    for (int i = 0; i < AUDIO_PACKETS_MEMORY_POOL; i++)
     {
         LOG_I("audio read in cache %d=buf=%p, s=%d len=%d",
               i,
@@ -134,10 +142,13 @@ ezip_audio_packet_t *ezip_audio_read_packet(ffmpeg_handle thiz, uint32_t size, u
     return p;
 }
 
-void ezip_audio_decode(ffmpeg_handle thiz, audio_server_callback_func callback)
+void ezip_audio_decode(ffmpeg_handle thiz, audio_server_callback_func callback, AVCodecParserContext *parser)
 {
-#if PKG_USING_LIBHELIX
     ezip_audio_cache_t *cache = &thiz->ezip_audio_cache;
+#if EZIP_DECODE_AUDIO_USING_FFMPEG
+    AVPacket packet;
+#elif PKG_USING_LIBHELIX
+    UNUSED(parser);
     HMP3Decoder hMP3Decoder = (HMP3Decoder)cache->decode_handle;
     if (!hMP3Decoder)
     {
@@ -151,8 +162,10 @@ void ezip_audio_decode(ffmpeg_handle thiz, audio_server_callback_func callback)
         RT_ASSERT(cache->decode_out);
         LOG_I("mp3 decoder=%p", hMP3Decoder);
     }
+#endif
+
 #if 0
-    for (int i = 0; i < AUDIO_PACKEET_MEMORY_POOL; i++)
+    for (int i = 0; i < AUDIO_PACKETS_MEMORY_POOL; i++)
     {
         LOG_I("decode audio cache %d=buf=%p, s=%d len=%d",
               i,
@@ -179,19 +192,103 @@ void ezip_audio_decode(ffmpeg_handle thiz, audio_server_callback_func callback)
 
     //LOG_I("got slist=%p, buf=%p size=%d len=%d", readed, p->buf, p->buf_size, p->data_len);
     //LOG_HEX("mp3 data:\n", 16, p->buf, p->data_len);
+#if EZIP_DECODE_AUDIO_USING_FFMPEG
+    uint8_t *data = NULL;
+    uint8_t *pp = p->buf;
+    uint32_t size = 0;
+    int bytes_used;
 
+    while (p->data_len > 0)
+    {
+        bytes_used = av_parser_parse2(parser, thiz->audio_dec_ctx, &data, &size, pp, p->data_len, 0, 0, AV_NOPTS_VALUE);
+        p->data_len -= bytes_used;
+        pp += bytes_used;
+        if (size == 0)
+        {
+            continue;
+        }
+        // We have data of one packet, decode it; or decode whatever when ending
+        av_init_packet(&packet);
+        packet.data = data;
+        packet.size = size;
+        int got_frame = 0;
+        int ret = avcodec_decode_audio4(thiz->audio_dec_ctx, thiz->audio_frame, &got_frame, &packet);
+        if (ret < 0)
+        {
+            LOG_I("Decode frame error\n");
+            continue;
+        }
+        if (got_frame)
+        {
+            if (thiz->audio_data == NULL)
+            {
+                thiz->audio_data_size = (thiz->audio_frame->nb_samples * thiz->audio_frame->channels * sizeof(uint16_t));
+
+                if (thiz->audio_data_size < 1152 * 4)
+                {
+                    thiz->audio_data_size = 1152 * 4;
+                }
+
+                thiz->audio_data = (uint16_t *)thiz->cfg.mem_malloc(thiz->audio_data_size);
+                RT_ASSERT(thiz->audio_data != NULL);
+            }
+            if (thiz->audio_handle == NULL)
+            {
+                audio_parameter_t arg = {0};
+                arg.write_bits_per_sample = 16;
+                arg.write_samplerate = thiz->audio_samplerate;
+                arg.write_channnel_num = thiz->audio_channel < 2 ? 1 : 2;
+                arg.write_cache_size = EZIP_AUDIO_CACHE_SIZE;
+                thiz->audio_data_period = thiz->audio_data_size / (thiz->audio_samplerate * arg.write_channnel_num * (arg.write_bits_per_sample >> 3) / 1000);
+                LOG_I("audio_frame_size=%d, sr=%d", thiz->audio_data_size, thiz->audio_samplerate);
+                LOG_I("audio_data_period=%d", thiz->audio_data_period);
+                thiz->audio_handle = audio_open(AUDIO_TYPE_LOCAL_MUSIC, AUDIO_TX, &arg, callback, thiz);
+                RT_ASSERT(thiz->audio_handle);
+            }
+
+            uint32_t new_size = thiz->audio_frame->nb_samples * thiz->audio_frame->channels * sizeof(uint16_t);
+            thiz->audio_data_period = new_size / (thiz->audio_samplerate * thiz->audio_frame->channels * 2 / 1000);
+
+            if (new_size > thiz->audio_data_size)
+            {
+                thiz->cfg.mem_free(thiz->audio_data);
+                thiz->audio_data_size = new_size;
+                thiz->audio_data = (uint16_t *)thiz->cfg.mem_malloc(new_size);
+                RT_ASSERT(thiz->audio_data != NULL);
+            }
+
+            media_audio_get(thiz->audio_frame,  thiz->audio_data, thiz->audio_data_size);
+            av_frame_unref(thiz->audio_frame);
+
+            while (0 == audio_write(thiz->audio_handle, (uint8_t *)thiz->audio_data, new_size))
+            {
+                uint32_t    evt = 0;
+                uint32_t    wait_ticks = rt_tick_from_millisecond(thiz->audio_data_period);
+                os_event_flags_wait(thiz->evt_audio, 1, OS_EVENT_FLAG_WAIT_ANY | OS_EVENT_FLAG_CLEAR, wait_ticks, &evt);
+                if (thiz->is_ok == 0)
+                {
+                    LOG_I("ezip exit@audio");
+                    break;
+                }
+            }
+        }
+    }
+    rt_enter_critical();
+    rt_slist_append(&cache->empty_audio_slist, readed);
+    p->data_len = 0;
+    rt_exit_critical();
+
+    return;
+
+#elif PKG_USING_LIBHELIX
     RT_ASSERT(cache->main_left < 2 * MAINBUF_SIZE);
     RT_ASSERT(cache->main_left + p->data_len < MP3_MAIN_BUFFER_SIZE);
     RT_ASSERT(cache->main_ptr == &cache->main_buf[0]);
     memcpy(cache->main_ptr + cache->main_left, p->buf, p->data_len);
     cache->main_left += p->data_len;
-    rt_enter_critical();
-    rt_slist_append(&cache->empty_audio_slist, readed);
-    p->data_len = 0;
-    rt_exit_critical();
     do
     {
-        if (cache->main_left < 2 * MAINBUF_SIZE)
+        if (cache->main_left < MAINBUF_SIZE)
         {
             if (cache->main_ptr != &cache->main_buf[0])
             {
@@ -280,6 +377,10 @@ void ezip_audio_decode(ffmpeg_handle thiz, audio_server_callback_func callback)
         }
     }
     while (thiz->is_ok);
+    rt_enter_critical();
+    rt_slist_append(&cache->empty_audio_slist, readed);
+    p->data_len = 0;
+    rt_exit_critical();
 #endif
 }
 

@@ -53,6 +53,7 @@ enum
 #define NETWORK_BUFFER_CAPACITY     64   //cache AVPacket from network download
 #define READ_BUFFER_CAPACITY        3    //Undecoded AVPacket
 #define AUDIO_CACHE_SIZE            32000
+#define EZIP_AUDIO_CACHE_SIZE       8192
 
 #define FFMPEG_HANDLE_MAGIC     0x55555555
 
@@ -71,7 +72,9 @@ typedef struct
     uint32_t        data_len;
 } ezip_video_packet_t;
 
-#define AUDIO_PACKEET_MEMORY_POOL   (READ_BUFFER_CAPACITY + 6)
+#define EZIP_DECODE_AUDIO_USING_FFMPEG  1
+#define EZIP_AUDIO_PACKETS_CAPACITY     1
+#define AUDIO_PACKETS_MEMORY_POOL       (EZIP_AUDIO_PACKETS_CAPACITY + 1)
 
 typedef struct
 {
@@ -80,13 +83,16 @@ typedef struct
     uint32_t    buf_size;
     uint32_t    data_len;
 } ezip_audio_packet_t;
-
-#define MP3_MAIN_BUFFER_SIZE    8000
+#if EZIP_DECODE_AUDIO_USING_FFMPEG
+    #define MP3_MAIN_BUFFER_SIZE    8
+#else
+    #define MP3_MAIN_BUFFER_SIZE    8000
+#endif
 typedef struct
 {
     rt_slist_t              empty_audio_slist;
     rt_slist_t              readed_audio_slist;
-    ezip_audio_packet_t     cache[AUDIO_PACKEET_MEMORY_POOL];
+    ezip_audio_packet_t     cache[AUDIO_PACKETS_MEMORY_POOL];
     uint8_t                 main_buf[MP3_MAIN_BUFFER_SIZE];
     uint32_t                main_left;
     uint8_t                 *main_ptr;
@@ -202,7 +208,7 @@ int ezip_video_decode(ffmpeg_handle thiz, uint32_t size, uint32_t paddings);
 void ezip_audio_cache_init(ffmpeg_handle thiz);
 void ezip_audio_cache_deinit(ffmpeg_handle thiz);
 ezip_audio_packet_t *ezip_audio_read_packet(ffmpeg_handle thiz, uint32_t size, uint32_t paddings);
-void ezip_audio_decode(ffmpeg_handle thiz, audio_server_callback_func callback);
+void ezip_audio_decode(ffmpeg_handle thiz, audio_server_callback_func callback, AVCodecParserContext *parser);
 int ezip_flash_read(ffmpeg_handle thiz, void *buf, int len);
 
 #endif

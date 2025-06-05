@@ -200,5 +200,8 @@ bool ffmpeg_is_video_available(ffmpeg_handle hanlde);
 //only use for e_network_packet_stream, p is malloced by user, and free by pack_free() in ffmpeg_config_t
 void ffmpeg_send_frame_to_decoder(ffmpeg_handle thiz, media_packet_t *p);
 
+ffmpeg_handle ffmpeg_player_status_get(void);
+
+
 #endif
 
