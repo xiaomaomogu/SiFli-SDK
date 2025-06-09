@@ -3,9 +3,16 @@
 ## 上手指南
 SiFli SDK是官方提供的基于RT-Thread定制开发的一套软件开发框架，使用它可以快速开发运行于思澈科技芯片平台的应用程序。
 
-配套文档链接：https://wiki.sifli.com/
+配套文档链接：
+- https://wiki.sifli.com/
+- https://docs.sifli.com/projects/sdk/latest/sf32lb52x/index.html
 
 可参考文档进行快速上手开发
+
+**注意**：由于SDK包含了子模块，克隆仓库时需要添加`--recursive`参数，如下：
+```bash
+git clone --recursive https://github.com/OpenSiFli/SiFli-SDK
+```
 
 软件框架如下图，
 
