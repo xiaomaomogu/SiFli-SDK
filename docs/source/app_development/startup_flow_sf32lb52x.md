@@ -16,6 +16,10 @@ SF32LB52X为双核芯片，有内置和外置多个存储接口，MPI1为内置�
 
 数字系列芯片在一级bootloader阶段会打开VDD33_LDO2（对应芯片的VDD33_VOUT1输出）。字母系列芯片在一级bootloader阶段会将PA21输出高电平。
 
+```{warning}
+如果从NOR Flash启动，需要确保Flash颗粒处于3字节地址模式（对于容量大于16MB的颗粒，为了访问全地址空间，正常使用时会配置成4字节地址模式），否则一级bootloader无法正确读取Flash的数据。对于数字系列，如果调用驱动`HAL_PMU_Reboot`重启或者`HAL_PMU_EnterHibernate`关机，都会自动关闭VDD33_LDO2，这样开机时颗粒状态就会回到默认的3字节地址模式。
+```
+
 ## 二级Bootloader
 
 二级Bootloader根据芯片封装类型以及Flash分区表，加载应用程序并跳转执行。根据芯片封装类型，应用程序分为以下几种启动方式，运行方式分为XIP（直接以NOR Flash地址执行代码，代码的存储地址与执行地址相同）和非XIP（从Flash拷贝代码到RAM中执行，即代码的存储地址与执行地址不同）两种，不论是哪种启动方式，应用程序与二级Bootloader均存放在同一个启动Flash上，区别只是应用程序代码的运行方式不同：
