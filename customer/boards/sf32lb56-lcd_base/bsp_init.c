@@ -257,8 +257,10 @@ void HAL_PreInit(void)
 
     __HAL_SYSCFG_HPBG_EN();
     __HAL_SYSCFG_HPBG_VDDPSW_EN();
+    HAL_Delay_us(2);    /* Wait after enabling HPBG, 2us at least. */
 
     HAL_RCC_HCPU_ConfigHCLK(240);
+    HAL_RCC_HCPU_SetDiv(1, 1, 5);
 
     // Reset sysclk used by HAL_Delay_us
     HAL_Delay_us(0);
@@ -279,8 +281,6 @@ void HAL_PreInit(void)
 
     board_init_psram();
     board_init_flash();
-
-    HAL_RCC_HCPU_SetDiv(1, 1, 5);
 
     HAL_RCC_HCPU_DeepWFIClockSelect(true, RCC_SYSCLK_HXT48);
     HAL_RCC_HCPU_SetDeepWFIDiv(48, 0, 1);

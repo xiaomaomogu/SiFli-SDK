@@ -4,7 +4,7 @@
 #include "stdio.h"
 #include "dfs_file.h"
 #include "drivers/mmcsd_core.h"
-
+#include "dfs_posix.h"
 
 /* User code start from here --------------------------------------------------------*/
 #ifndef FS_REGION_START_ADDR
@@ -56,7 +56,7 @@ int mnt_init(void)
         else
             rt_kprintf("dfs_mkfs elm flash fail\n");
     }
-
+    mkdir("/misc", 0);
     if (dfs_mount(FS_MSIC, "/misc", "elm", 0, 0) == 0) // fs exist
     {
         rt_kprintf("mount fs on flash to FS_MSIC success\n");

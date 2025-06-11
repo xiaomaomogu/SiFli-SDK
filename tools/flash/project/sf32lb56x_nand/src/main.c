@@ -86,9 +86,10 @@ static void JLINK_DRV_BSP_PIN_Init(void)
     HAL_PIN_Set(PAD_PB16, USART4_RXD, PIN_PULLUP, 0);
     //HAL_PIN_Set(PAD_PB18, USART5_TXD, PIN_PULLUP, 0);
     //HAL_PIN_Set(PAD_PB17, USART5_RXD, PIN_PULLUP, 0);
+    HAL_PIN_Set(PAD_PB22, GPIO_B22, PIN_PULLUP, 0);
     
-    BSP_GPIO_Set(PAD_PB22, 1, 0);
-	//BSP_GPIO_Set(PAD_PB17, 1, 0);
+    BSP_GPIO_Set(22, 1, 0);
+	//BSP_GPIO_Set(17, 1, 0);
 
 #if defined(CFG_FACTORY_DEBUG)
     if (user_pmic_cfg() == false)

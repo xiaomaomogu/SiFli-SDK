@@ -19,7 +19,6 @@ if not all([GITHUB_TOKEN, GITHUB_REPO, GITLAB_URL, GITLAB_TOKEN, GITLAB_REPO]):
 g = Github(GITHUB_TOKEN)
 repo = g.get_repo(GITHUB_REPO)
 
-# 获取所有可合并的PR（此处假设label为'queue-for-merge'）
 prs = repo.get_pulls(state='open', base=GITHUB_BRANCH)
 queue_prs = [pr for pr in prs]
 

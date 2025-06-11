@@ -235,7 +235,12 @@ __HAL_ROM_USED HAL_StatusTypeDef HAL_PMU_RC10Kconfig(void)
     /* reduce VBAT_LDO output voltage to 3V to avoid leakage current if VCC is lower than 3.3V */
     MODIFY_REG(hwp_pmuc->AON_LDO, PMUC_AON_LDO_VBAT_LDO_SET_VOUT_Msk,
                MAKE_REG_VAL(0, PMUC_AON_LDO_VBAT_LDO_SET_VOUT_Msk, PMUC_AON_LDO_VBAT_LDO_SET_VOUT_Pos));
+
+    /* turn off LDO2 to ensure flash changing to 3byte address mode when boot up */
+    HAL_PMU_ConfigPeriLdo(PMU_PERI_LDO2_3V3, 0, 1);
+    HAL_Delay_us_(8000);
 #endif /* SF32LB52X */
+
     /* clear WSR as it's not cleared if triggered in sleep */
     HAL_PMU_CLEAR_WSR(hwp_pmuc->WSR);
 
@@ -264,6 +269,10 @@ __HAL_ROM_USED HAL_StatusTypeDef HAL_PMU_RC10Kconfig(void)
     /* reduce VBAT_LDO output voltage to 3V to avoid leakage current if VCC is lower than 3.3V */
     MODIFY_REG(hwp_pmuc->AON_LDO, PMUC_AON_LDO_VBAT_LDO_SET_VOUT_Msk,
                MAKE_REG_VAL(0, PMUC_AON_LDO_VBAT_LDO_SET_VOUT_Msk, PMUC_AON_LDO_VBAT_LDO_SET_VOUT_Pos));
+
+    /* turn off LDO2 to ensure flash changing to 3byte address mode when boot up */
+    HAL_PMU_ConfigPeriLdo(PMU_PERI_LDO2_3V3, 0, 1);
+    HAL_Delay_us_(8000);
 #endif /* SF32LB52X */
 
     /* clear WSR as it's not cleared if triggered in sleep */
@@ -417,7 +426,7 @@ __HAL_ROM_USED HAL_StatusTypeDef HAL_PMU_LXTReady()
     HAL_StatusTypeDef ret = HAL_OK;
 
 #ifdef FPGA
-    //rdy signal from analog£¬FPGA needn't check
+    //rdy signal from analog FPGA needn't check
     return ret;
 #endif
 
@@ -564,6 +573,7 @@ __HAL_ROM_USED HAL_StatusTypeDef HAL_PMU_EnableBuck2(void)
 #endif
 
 #ifdef SF32LB52X
+    /* turn off LDO2 to ensure flash changing to 3byte address mode when boot up */
     HAL_PMU_ConfigPeriLdo(PMU_PERI_LDO2_3V3, 0, 1);
     HAL_Delay_us_(8000);
 #endif

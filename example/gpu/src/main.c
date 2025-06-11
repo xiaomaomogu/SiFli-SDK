@@ -47,7 +47,7 @@
 #include <rtdevice.h>
 #include <board.h>
 #include <string.h>
-
+#include <stdlib.h>
 #include "mem_section.h"
 #include "drv_epic.h"
 

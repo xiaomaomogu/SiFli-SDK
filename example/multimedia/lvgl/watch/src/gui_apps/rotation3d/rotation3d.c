@@ -151,17 +151,11 @@ static void img_event_handler(lv_event_t *e)
 
         if (0 == rotation3d.rotation_dir)
         {
-            if ((p.y >= rotation3d.image[0]->coords.y1) && (p.y <= rotation3d.image[0]->coords.y2))
-            {
-                rotation3d.image_rotate_degree = ((rotation3d.image[0]->coords.y2 - p.y) * (900) / lv_area_get_height(&rotation3d.image[0]->coords));
-            }
+            rotation3d.image_rotate_degree = 900 - ((p.y * 900 / LV_VER_RES_MAX) % 900);
         }
         else
         {
-            if ((p.x >= rotation3d.image[0]->coords.x1) && (p.x <= rotation3d.image[0]->coords.x2))
-            {
-                rotation3d.image_rotate_degree = ((rotation3d.image[0]->coords.x2 - p.x) * (900) / lv_area_get_width(&rotation3d.image[0]->coords));
-            }
+            rotation3d.image_rotate_degree = 900 - ((p.x * 900 / LV_HOR_RES_MAX) % 900);
         }
     }
     else if (LV_EVENT_DRAW_MAIN == event)
@@ -236,27 +230,36 @@ static void img_event_handler(lv_event_t *e)
                             &pivot, pivot_z, src_img_z, src_zoom);
 
 
-
             img_rotate_adv1(&dest, image1, rotation3d.image_rotate_degree - 900,
                             &src_coords, buf_area, clip_area, LV_OPA_COVER, LV_COLOR_BLACK,
                             &pivot, pivot_z, src_img_z, src_zoom);
-
         }
         else
         {
+            if (rotation3d.image_rotate_degree > 450)
+            {
+                img_rotate_adv2(&dest, image0, rotation3d.image_rotate_degree,
+                                &src_coords, buf_area, clip_area, LV_OPA_COVER, LV_COLOR_BLACK,
+                                &pivot, pivot_z, src_img_z, src_zoom);
 
-            img_rotate_adv2(&dest, image0, rotation3d.image_rotate_degree,
-                            &src_coords, buf_area, clip_area, LV_OPA_COVER, LV_COLOR_BLACK,
-                            &pivot, pivot_z, src_img_z, src_zoom);
 
 
+                img_rotate_adv2(&dest, image1, rotation3d.image_rotate_degree - 900,
+                                &src_coords, buf_area, clip_area, LV_OPA_COVER, LV_COLOR_BLACK,
+                                &pivot, pivot_z, src_img_z, src_zoom);
+            }
+            else /*image1 is below image0, so draw it first*/
+            {
+                img_rotate_adv2(&dest, image1, rotation3d.image_rotate_degree - 900,
+                                &src_coords, buf_area, clip_area, LV_OPA_COVER, LV_COLOR_BLACK,
+                                &pivot, pivot_z, src_img_z, src_zoom);
 
-            img_rotate_adv2(&dest, image1, rotation3d.image_rotate_degree - 900,
-                            &src_coords, buf_area, clip_area, LV_OPA_COVER, LV_COLOR_BLACK,
-                            &pivot, pivot_z, src_img_z, src_zoom);
+                img_rotate_adv2(&dest, image0, rotation3d.image_rotate_degree,
+                                &src_coords, buf_area, clip_area, LV_OPA_COVER, LV_COLOR_BLACK,
+                                &pivot, pivot_z, src_img_z, src_zoom);
+            }
 
         }
-
 
         if (rotation3d.log_level & ROTATE3D_LOG_DETAL)
         {

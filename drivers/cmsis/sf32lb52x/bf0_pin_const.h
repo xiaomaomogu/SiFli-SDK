@@ -1736,6 +1736,18 @@ typedef enum
     PB30_I2C_UART,
     /** PB31_I2C_UART */
     PB31_I2C_UART,
+    /** PBR_GPO */
+    PBR_GPO,
+    /** PBR_CLK_LP */
+    PBR_CLK_RTC,
+    /** PBR_LPTIM1_OUT */
+    PBR_LPTIM1_OUT,
+    /** PBR_LPTIM1_INV_OUT */
+    PBR_LPTIM1_INV_OUT,
+    /** PBR_LPTIM2_OUT */
+    PBR_LPTIM2_OUT,
+    /** PBR_LPTIM2_INV_OUT */
+    PBR_LPTIM2_INV_OUT,
     PIN_FUNC_MAX,
 } pin_function;
 

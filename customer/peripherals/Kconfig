@@ -247,6 +247,9 @@ config LCD_USING_CH13613
     bool
     default n
 
+config LCD_USING_GC9107
+    bool
+    default n
 
 
 

@@ -318,7 +318,7 @@
 0x00064589 T rt_system_scheduler_init
 0x000645b5 T rt_system_scheduler_start
 0x000645e1 T rt_system_timer_init
-0x000645f1 T rt_system_timer_thread_init
+0x000645f1 T rt_system_timer_thread_init_rom
 0x000645f5 T rt_thread_control
 0x00064685 T rt_thread_create
 0x000646c5 T rt_thread_delete
@@ -343,7 +343,7 @@
 0x00064ead T rt_timer_detach
 0x00064f49 T rt_timer_init
 0x00064fa1 T rt_timer_next_timeout_tick
-0x00064fc1 T rt_timer_start
+0x00064fc1 T rt_timer_start_rom
 0x000650c1 T rt_timer_stop
 0x00065139 T rt_vsnprintf
 0x000656dd T rt_wdt_init

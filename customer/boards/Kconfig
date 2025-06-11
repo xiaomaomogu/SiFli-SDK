@@ -200,12 +200,8 @@ if BSP_USING_BOARD_EC_LB567XXX || SIFLI_LB567
     source "$SIFLI_SDK/customer/boards/ec-lb567/Kconfig.board"
 endif
 
-if BSP_USING_BOARD_EM_LB567XXX
-    source "$SIFLI_SDK/customer/boards/em-lb567/Kconfig.board"
-endif
-
-if BSP_USING_BOARD_EM_LB566XXX
-    source "$SIFLI_SDK/customer/boards/em-lb566/Kconfig.board"
+if BSP_USING_BOARD_SF32LB56_LCD_N16R12N1
+    source "$SIFLI_SDK/customer/boards/sf32lb56-lcd_n16r12n1/Kconfig.board"
 endif
 
 if BSP_USING_BOARD_EC_LB583XXX || SIFLI_LB583

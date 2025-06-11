@@ -363,7 +363,7 @@ common_projects:
   - path: example/rt_device/pm/project/hcpu
     boards:
       - sf32lb56-lcd_n16r12n1
-      - sf32lb56-lcd_a128r12n1
+      # - sf32lb56-lcd_a128r12n1
       - eh-lb551
       - sf32lb52-lcd_n16r8
       - sf32lb58-lcd_n16r64n4
@@ -401,7 +401,10 @@ common_projects:
   - path: example/rt_driver/project
     boards: *default_boards
 
-  - path: example/storage/file_system/project
+  - path: example/storage/fatfs/nand/project
+    boards: *default_boards
+
+  - path: example/storage/fatfs/nor/project
     boards: *default_boards
 
   - path: example/storage/flashdb/project/nand

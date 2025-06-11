@@ -253,9 +253,9 @@ __WEAK void acpu_main(uint8_t task_name, void *param)
 #ifdef PKG_LIB_OPUS
     case ACPU_TASK_opus_encoder_init:
     {
-        acpu_printf("acpu: encode init\n");
+        //acpu_printf("acpu: encode init\n");
         opus_encode_init_arg_t *arg  = (opus_encode_init_arg_t *)param;
-        ACPU_ASSERT(arg);
+        //ACPU_ASSERT(arg);
         int result = opus_encoder_init((OpusEncoder *)arg->st, arg->fs, arg->channels, arg->application);
         acpu_task_output->ret = result;
         acpu_send_result(NULL, 0);
@@ -264,10 +264,10 @@ __WEAK void acpu_main(uint8_t task_name, void *param)
     case ACPU_TASK_opus_encoder_ctl:
     {
         opus_encode_ctl_arg_t *arg  = (opus_encode_ctl_arg_t *)param;
-        ACPU_ASSERT(arg);
+        //ACPU_ASSERT(arg);
         OpusEncoder *encoder = (OpusEncoder *)arg->st;
 #if 1
-        opus_encoder_ctl(encoder, OPUS_SET_EXPERT_FRAME_DURATION(OPUS_FRAMESIZE_10_MS));
+        opus_encoder_ctl(encoder, OPUS_SET_EXPERT_FRAME_DURATION(OPUS_FRAMESIZE_20_MS));
 #else
         opus_encoder_ctl(encoder, OPUS_SET_EXPERT_FRAME_DURATION(OPUS_FRAMESIZE_20_MS));
 #endif
@@ -294,7 +294,7 @@ __WEAK void acpu_main(uint8_t task_name, void *param)
     {
         //acpu_printf("acpu: encode\n");
         opus_encode_arg_t *arg  = (opus_encode_arg_t *)param;
-        ACPU_ASSERT(arg->data && arg->pcm && arg->st);
+        //ACPU_ASSERT(arg->data && arg->pcm && arg->st);
         opus_int32 len = opus_encode((OpusEncoder *)arg->st,
                                      arg->pcm,
                                      arg->analysis_frame_size,
@@ -308,7 +308,7 @@ __WEAK void acpu_main(uint8_t task_name, void *param)
     case ACPU_TASK_opus_decode:
     {
         opus_decode_arg_t *arg  = (opus_decode_arg_t *)param;
-        ACPU_ASSERT(arg->st);
+        //ACPU_ASSERT(arg->st);
         opus_int32 res = opus_decode((OpusDecoder *)arg->st,
                                      arg->data,
                                      arg->len,
@@ -322,7 +322,7 @@ __WEAK void acpu_main(uint8_t task_name, void *param)
     case ACPU_TASK_opus_decoder_init:
     {
         opus_decode_init_arg_t *arg  = (opus_decode_init_arg_t *)param;
-        ACPU_ASSERT(arg);
+        //ACPU_ASSERT(arg);
         int de_ret = opus_decoder_init((OpusDecoder *)arg->st, arg->fs, arg->channels);
         acpu_task_output->ret = de_ret;
         acpu_send_result(NULL, 0);
@@ -332,7 +332,7 @@ __WEAK void acpu_main(uint8_t task_name, void *param)
     {
 #if 0 //identify different decoder by id
         opus_decode_ctl_arg_t *arg  = (opus_decode_ctl_arg_t *)param;
-        ACPU_ASSERT(arg);
+        //ACPU_ASSERT(arg);
         OpusDecoder *decoder = (OpusDecoder *)arg->st;
         switch (arg->id)
         {

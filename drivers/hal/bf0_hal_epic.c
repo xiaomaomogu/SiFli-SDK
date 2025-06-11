@@ -270,12 +270,9 @@ void EPIC_GetRotatedArea(EPIC_AreaTypeDef *output, uint16_t w, uint16_t h, int16
 int16_t EPIC_TrigoSin(int16_t angle)
 {
     int16_t ret = 0;
-    angle = angle % 360;
 
-    if (angle < 0)
-    {
-        angle = 360 + angle;
-    }
+    while (angle < 0) angle += 360;
+    while (angle >= 360) angle -= 360;
 
     if (angle < 90)
     {
@@ -304,10 +301,13 @@ int16_t EPIC_TrigoSin(int16_t angle)
 /** Return with sinus of an angle in 0.1 degree
  *
  * @param angle in 0.1 degree
- * @return sinus of 'angle'. sin(-90) = -32767, sin(90) = 32767
+ * @return sinus of 'angle'. sin(-900) = -32767, sin(900) = 32767
  */
 void EPIC_TrigoSinCosP1(int16_t angle, int16_t *sin_val, int16_t *cos_val)
 {
+    while (angle < 0) angle += 3600;
+    while (angle >= 3600) angle -= 3600;
+
     int32_t angle_low = angle / 10;
     int32_t angle_hight = angle_low + 1;
     int32_t angle_rem = angle  - (angle_low * 10);

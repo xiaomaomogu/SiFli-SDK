@@ -43,11 +43,15 @@ static ffmpeg_handle g_player = NULL;
 
 static void drop_all_avpacket(os_message_queue_t q);
 static void clean_up(ffmpeg_handle thiz);
+#ifdef BSP_USING_PC_SIMULATOR
+extern uint32_t lv_img_decode_flash_read(uint32_t addr, uint8_t *buf, int size);
+#else
 RT_WEAK uint32_t lv_img_decode_flash_read(uint32_t addr, uint8_t *buf, int size)
 {
     RT_ASSERT(0);
     return 0;
 }
+#endif
 
 int ezip_flash_read(ffmpeg_handle thiz, void *buf, int len)
 {
@@ -698,6 +702,7 @@ static void media_read_thread(void *p)
                 av_packet_unref(&pkt);
                 break;
             }
+
             if (thiz->is_network_file)
                 os_delay(10);
             else
@@ -1130,6 +1135,31 @@ static void ezip_audio_decode_thread(void *p)
     ffmpeg_handle thiz = p;
     ezip_audio_packet_t pkt;
     LOG_I("audio decode task run\n");
+
+#if EZIP_DECODE_AUDIO_USING_FFMPEG
+    ffmeg_mem_init();
+    av_register_all();
+    AVCodec *codec = avcodec_find_decoder(AV_CODEC_ID_MP3);
+    RT_ASSERT(codec);
+    LOG_I("mp3 codec id=%d", codec->id);
+    thiz->audio_dec_ctx = avcodec_alloc_context3(codec);
+    RT_ASSERT(thiz->audio_dec_ctx);
+    thiz->audio_dec_ctx->request_sample_fmt = AV_SAMPLE_FMT_S16;
+    if (avcodec_open2(thiz->audio_dec_ctx, codec, NULL) < 0)
+    {
+        LOG_I("mp3 codec error\n");
+        RT_ASSERT(0);
+    }
+    AVCodecParserContext *parser = av_parser_init(AV_CODEC_ID_MP3);
+    if (!parser)
+    {
+        LOG_I("mp3 parser error\n");
+        RT_ASSERT(0);
+    }
+    RT_ASSERT(!thiz->audio_frame);
+    thiz->audio_frame = av_frame_alloc();
+    RT_ASSERT(thiz->audio_frame);
+#endif
     /*readed frame must decode it, or memory leak. so look thiz->is_ok first*/
     while (thiz->is_ok)
     {
@@ -1146,9 +1176,27 @@ static void ezip_audio_decode_thread(void *p)
         //LOG_I("audio get");
         os_message_get(thiz->av_pkt_queue_audio, &pkt, sizeof(pkt), OS_WAIT_FORVER);
         //LOG_I("audio get ok=%p", pkt.buf);
-        ezip_audio_decode(thiz, audio_callback_func);
+        ezip_audio_decode(thiz, audio_callback_func, parser);
     }
-
+#if EZIP_DECODE_AUDIO_USING_FFMPEG
+    AVPacket packet;
+    av_init_packet(&packet);
+    packet.data = NULL;
+    packet.size = 0;
+    int got_frame;
+    int len = avcodec_decode_audio4(thiz->audio_dec_ctx, thiz->audio_frame, &got_frame, &packet);
+    LOG_I("1");
+    avcodec_close(thiz->audio_dec_ctx);
+    av_free(thiz->audio_dec_ctx);
+    LOG_I("2");
+    thiz->audio_dec_ctx = NULL;
+    av_parser_close(parser);
+    LOG_I("3");
+    av_frame_free(&thiz->audio_frame);
+    LOG_I("4");
+    thiz->audio_frame = NULL;
+    ffmpeg_memleak_check();
+#endif
     if (thiz->audio_handle)
     {
         audio_close(thiz->audio_handle);
@@ -1525,6 +1573,8 @@ static bool demux_sifli_ezip_media(ffmpeg_handle thiz)
     thiz->period = 1000 / thiz->ezip_header.fps;
     thiz->period_float = 1000.0f / thiz->ezip_header.fps;
     thiz->total_time_in_seconds = thiz->ezip_header.duration_seconds;
+    thiz->audio_samplerate = thiz->ezip_header.samplerate;
+    thiz->audio_channel = thiz->ezip_header.ch;
 
     thiz->gpu_pic_fmt = e_sifli_fmt_ezip;
     thiz->is_ok = 1;
@@ -1542,7 +1592,7 @@ static bool demux_sifli_ezip_media(ffmpeg_handle thiz)
     rt_uint8_t  priority = av_read_pkt_task_prio;
 
     // Start decode thread;
-    thiz->av_pkt_queue_audio = os_message_queue_create_int("aud_pkt", READ_BUFFER_CAPACITY, sizeof(ezip_audio_packet_t), NULL, 0);
+    thiz->av_pkt_queue_audio = os_message_queue_create_int("aud_pkt", EZIP_AUDIO_PACKETS_CAPACITY, sizeof(ezip_audio_packet_t), NULL, 0);
     RT_ASSERT(thiz->av_pkt_queue_audio != NULL);
 
     if (thiz->cfg.audio_enable)
@@ -2040,6 +2090,11 @@ void ffmpeg_send_frame_to_decoder(ffmpeg_handle thiz, media_packet_t *p)
     {
         media_queue_add_tail(thiz->network_queue, p);
     }
+}
+
+ffmpeg_handle ffmpeg_player_status_get(void)
+{
+    return g_player;
 }
 
 #if 0

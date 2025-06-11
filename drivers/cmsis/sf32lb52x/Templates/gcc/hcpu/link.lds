@@ -278,6 +278,12 @@ SECTIONS
     KEEP(*(SORT(.bt_sifli_reg*)))
     __bt_sifli_reg_end__ = .;
 
+    /* section information for modules */
+    . = ALIGN(4);
+    __rtmsymtab_start = .;
+    KEEP(*(RTMSymTab))
+    __rtmsymtab_end = .;
+
     KEEP(*(.eh_frame*))
     _etext = ABSOLUTE(.);
 #endif

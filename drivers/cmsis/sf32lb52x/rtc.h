@@ -419,6 +419,10 @@ typedef struct
 #define RTC_PBR0R_SEL_Pos               (12U)
 #define RTC_PBR0R_SEL_Msk               (0x7UL << RTC_PBR0R_SEL_Pos)
 #define RTC_PBR0R_SEL                   RTC_PBR0R_SEL_Msk
+#define RTC_PBR0R_SEL_PBR_OUT           (0UL << RTC_PBR0R_SEL_Pos)
+#define RTC_PBR0R_SEL_CLK_RTC           (1UL << RTC_PBR0R_SEL_Pos)
+#define RTC_PBR0R_SEL_PINOUT_SEL0       (2UL << RTC_PBR0R_SEL_Pos)
+#define RTC_PBR0R_SEL_PINOUT_SEL1       (3UL << RTC_PBR0R_SEL_Pos)
 #define RTC_PBR0R_FORCE1_Pos            (31U)
 #define RTC_PBR0R_FORCE1_Msk            (0x1UL << RTC_PBR0R_FORCE1_Pos)
 #define RTC_PBR0R_FORCE1                RTC_PBR0R_FORCE1_Msk

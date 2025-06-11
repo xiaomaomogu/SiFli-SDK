@@ -829,7 +829,7 @@ __HAL_ROM_USED HAL_StatusTypeDef HAL_AUDCODEC_Config_TChanel(AUDCODEC_HandleType
         hacodec->Instance_hp->DAC_CH0_CFG_EXT = (1 << AUDCODEC_HP_DAC_CH0_CFG_EXT_RAMP_EN_Pos) |
                                                 (1 << AUDCODEC_HP_DAC_CH0_CFG_EXT_RAMP_MODE_Pos) |
                                                 (1 << AUDCODEC_HP_DAC_CH0_CFG_EXT_ZERO_ADJUST_EN_Pos) |
-                                                (2 << AUDCODEC_HP_DAC_CH0_CFG_EXT_RAMP_INTERVAL_Pos) |
+                                                (6 << AUDCODEC_HP_DAC_CH0_CFG_EXT_RAMP_INTERVAL_Pos) |
                                                 (0 << AUDCODEC_HP_DAC_CH0_CFG_EXT_RAMP_STAT_Pos);
 
         hacodec->Instance_hp->DAC_CH0_DEBUG = (0    << AUDCODEC_HP_DAC_CH0_DEBUG_BYPASS_Pos) |
@@ -852,7 +852,7 @@ __HAL_ROM_USED HAL_StatusTypeDef HAL_AUDCODEC_Config_TChanel(AUDCODEC_HandleType
         hacodec->Instance_hp->DAC_CH1_CFG_EXT = (1 << AUDCODEC_HP_DAC_CH0_CFG_EXT_RAMP_EN_Pos) |
                                                 (1 << AUDCODEC_HP_DAC_CH0_CFG_EXT_RAMP_MODE_Pos) |
                                                 (1 << AUDCODEC_HP_DAC_CH0_CFG_EXT_ZERO_ADJUST_EN_Pos) |
-                                                (2 << AUDCODEC_HP_DAC_CH0_CFG_EXT_RAMP_INTERVAL_Pos) |
+                                                (6 << AUDCODEC_HP_DAC_CH0_CFG_EXT_RAMP_INTERVAL_Pos) |
                                                 (0 << AUDCODEC_HP_DAC_CH0_CFG_EXT_RAMP_STAT_Pos);
 
         hacodec->Instance_hp->DAC_CH1_DEBUG = (0    << AUDCODEC_HP_DAC_CH0_DEBUG_BYPASS_Pos) |

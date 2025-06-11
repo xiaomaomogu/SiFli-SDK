@@ -17,6 +17,10 @@
     #define Pin_Out 124
     #define Pin_In 125
     #define hwp_gpio hwp_gpio2
+#elif defined(SF32LB56X)
+    #define Pin_Out 20
+    #define Pin_In 12
+    #define hwp_gpio hwp_gpio1
 #endif
 
 rt_device_t device;
@@ -48,6 +52,9 @@ void gpio_init(void)
 #elif defined(SF32LB58X)
     HAL_PIN_Set(PAD_PB00 + Pin_Out - 96, GPIO_B0 + Pin_Out - 96, PIN_PULLUP, 0);
     HAL_PIN_Set(PAD_PB00 + Pin_In - 96, GPIO_B0 + Pin_In - 96, PIN_PULLDOWN, 0);
+#elif defined(SF32LB56X)
+    HAL_PIN_Set(PAD_PA00 + Pin_Out, GPIO_A0 + Pin_Out, PIN_PULLUP, 1);
+    HAL_PIN_Set(PAD_PA00 + Pin_In, GPIO_A0 + Pin_In, PIN_PULLDOWN, 1);
 #endif
 
 
